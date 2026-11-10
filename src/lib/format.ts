@@ -10,8 +10,6 @@ export function dateOnly(value?: string | null) {
   if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  // Flutter shows `expiresAt.toLocal().toString().split(' ').first`,
-  // which renders as a local yyyy-MM-dd.
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return local.toISOString().split("T")[0];
 }

@@ -73,9 +73,6 @@ export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const sheetHeight = Math.min(520, Math.max(320, height - insets.top - 40));
-
-  // Flutter's sheet is a modal bottom sheet: dragging the header down
-  // dismisses it. The list itself keeps normal scrolling.
   const [sheetDrag] = useState(() => new Animated.Value(0));
   const [handlePan] = useState(() =>
     PanResponder.create({
@@ -104,7 +101,6 @@ export default function NotificationsScreen() {
 
   const openBook = async (bookId: string) => {
     const book = await resolveBook(bookId);
-    // Flutter keeps the sheet open and does nothing when the book is unknown.
     if (!book) return;
     router.replace({ pathname: '/book/[id]', params: { id: bookId } });
   };

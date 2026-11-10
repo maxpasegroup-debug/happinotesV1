@@ -7,16 +7,12 @@ import { useBooks } from '@/providers/books';
 
 export default function TabsLayout() {
   const { loadCollection } = useBooks();
-
-  // Flutter's MainShell loads the saved collection as soon as it appears, so
-  // Home can show correct bookmark states before Library is ever opened.
   useEffect(() => {
     const timer = setTimeout(() => {
       void loadCollection();
     }, 0);
     return () => clearTimeout(timer);
   }, [loadCollection]);
-
   return (
     <View className="flex-1 bg-white dark:bg-[#111111]">
       <Tabs

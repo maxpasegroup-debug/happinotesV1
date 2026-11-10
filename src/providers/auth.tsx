@@ -75,8 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         const parsed = parseUser(json);
         if (!parsed.id) throw new Error("The saved session is invalid.");
-        // A late reply still applies, exactly like Flutter's session restore.
-        if (mounted) setUser(parsed);
+       if (mounted) setUser(parsed);
       } catch {
         // Flutter clears the stored token whenever restoreSession throws.
         await clearToken().catch(() => {});

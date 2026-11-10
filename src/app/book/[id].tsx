@@ -131,7 +131,6 @@ export default function BookDetailScreen() {
 
   useEffect(() => {
     void refreshUser().catch(() => {
-      // Keep previously verified ownership while offline; never grant new access.
     });
     if (!book) {
       void loadBooks({ forceRefresh: true });
@@ -191,8 +190,6 @@ export default function BookDetailScreen() {
   const handlePrimary = useCallback(async () => {
     if (!book) return;
     if (requiresSubscription) {
-      // Flutter refreshes ownership before deciding, so a subscription bought
-      // elsewhere unlocks the story without restarting the app.
       let refreshed = user;
       try {
         refreshed = await refreshUser();

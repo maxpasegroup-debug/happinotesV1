@@ -34,7 +34,6 @@ export default function ForgotPasswordScreen() {
           method: 'POST',
           body: JSON.stringify({ email: email.trim().toLowerCase() }),
         });
-        // Flutter reveals the code + new-password fields without a toast.
         setSent(true);
       } else {
         if (!/^\d{6}$/.test(otp)) {

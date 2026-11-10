@@ -132,17 +132,12 @@ export function FeaturedCard({
           style={{ width: "100%", height: "100%" }}
         />
       ) : (
-        // Flutter's placeholder cover: dark rust fading to near-black.
         <LinearGradient
           colors={["#5B2118", "#151515"]}
           style={{ width: "100%", height: "100%" }}
         />
       )}
-      {/*
-        Flutter's scrim: fully transparent through the top half, then a
-        gradient down to 90% black so the title always sits on darkness
-        instead of on the artwork.
-      */}
+      {}
       <LinearGradient
         pointerEvents="none"
         colors={["rgba(0,0,0,0)", "rgba(0,0,0,0)", "rgba(0,0,0,0.9)"]}

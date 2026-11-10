@@ -22,7 +22,6 @@ import { HomeLoadingSkeleton } from '@/components/ui/skeleton';
 import { InlineState, SectionTitle } from '@/components/ui/inline-state';
 import { languageLabel } from '@/lib/format';
 import type { Book } from '@/lib/types';
-
 export default function HomeTab() {
   const { user } = useAuth();
   const {
@@ -42,11 +41,7 @@ export default function HomeTab() {
   const [refreshing, setRefreshing] = useState(false);
   const [railIndex, setRailIndex] = useState(0);
   const railRef = useRef<FlatList<Book>>(null);
-
   const preference = user?.languagePreference ?? 'all';
-  // Home is filtered by the saved language, exactly like Flutter's HomeTab. If
-  // that filter legitimately matches nothing, the screen says so instead of
-  // looking like the catalogue failed to load.
   const [showAllLanguages, setShowAllLanguages] = useState(false);
   const activePreference = showAllLanguages ? 'all' : preference;
   const matches = useCallback(
@@ -67,7 +62,6 @@ export default function HomeTab() {
 
   useEffect(() => {
     if (!hasLoaded) {
-      // The feed is fetched unfiltered; Home filters it by the saved language.
       void loadBooks();
     }
   }, [hasLoaded, loadBooks]);
@@ -159,7 +153,6 @@ export default function HomeTab() {
             accessibilityLabel="Notifications"
             hitSlop={8}
             onPress={() => {
-              // Flutter refreshes the list before opening the sheet.
               void loadNotifications(true);
               router.push('/notifications');
             }}

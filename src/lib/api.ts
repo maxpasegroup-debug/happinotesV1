@@ -13,18 +13,11 @@ const RAW_API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL ?? "").replace(
   "",
 );
 
-// Web builds are the only ones that can be blocked by the API's CORS
-// allow-list. In development Metro proxies the API from the dev-server
-// origin, so those requests stay same-origin and behave like native ones.
-const USES_METRO_PROXY =
-  Platform.OS === "web" && __DEV__ && RAW_API_BASE_URL !== "";
+const USES_METRO_PROXY = Platform.OS === "web" && __DEV__ && RAW_API_BASE_URL !== "";
 
 export const API_BASE_URL = USES_METRO_PROXY
   ? "/__proxy-api"
   : RAW_API_BASE_URL;
-
-// Socket.IO needs an absolute origin. Through the Metro proxy it is the dev
-// server itself; otherwise it is the API origin (without any /api prefix).
 export const API_ORIGIN = USES_METRO_PROXY
   ? typeof window !== "undefined"
     ? window.location.origin
@@ -65,7 +58,6 @@ async function storeSet(key: string, value: string) {
     }
     await SecureStore.setItemAsync(key, value);
   } catch {
-    // Storage failures must never break the app.
   }
 }
 
@@ -77,7 +69,6 @@ async function storeDelete(key: string) {
     }
     await SecureStore.deleteItemAsync(key);
   } catch {
-    // Storage failures must never break the app.
   }
 }
 
@@ -90,10 +81,6 @@ export class ApiError extends Error {
   }
 }
 
-// A Railway service that has scaled to sleep answers the first request with a
-// connection error or a 5xx while it wakes up. Only bodyless requests (GET and
-// DELETE-by-id, both idempotent) are retried, so a retry can never double-send
-// a purchase verification, an OTP request or a deletion request.
 const WAKE_UP_STATUS_CODES = [502, 503, 504];
 const WAKE_UP_DELAYS = [700, 1600];
 
@@ -110,10 +97,6 @@ export async function saveToken(token: string) {
 export async function clearToken() {
   await storeDelete(TOKEN_KEY);
 }
-
-// SecureStore only accepts `[\w.-]` in keys, so the preference namespace uses
-// a hyphen: `preference:theme_mode` would throw and silently lose every saved
-// preference (theme mode, onboarding prompts).
 export async function readPreference(key: string) {
   return storeGet(`preference-${key}`);
 }
@@ -127,8 +110,6 @@ export async function request<T = any>(
   options: RequestInit = {},
 ): Promise<T> {
   if (!RAW_API_BASE_URL) {
-    // EXPO_PUBLIC_* values are inlined when Metro bundles, so an env file added
-    // after the dev server started shows up as an empty string here.
     throw new ApiError(
       "The API URL is missing from this build. Restart Metro with `npx expo start -c` so EXPO_PUBLIC_API_BASE_URL is picked up.",
     );
@@ -136,8 +117,6 @@ export async function request<T = any>(
   const token = await readToken();
   const isForm =
     typeof FormData !== "undefined" && options.body instanceof FormData;
-  // Only announce a JSON body when there is one: an unnecessary Content-Type
-  // header turns plain GETs into CORS preflights in the browser.
   const headers: Record<string, string> = {
     ...(isForm || options.body == null
       ? {}
@@ -145,9 +124,6 @@ export async function request<T = any>(
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...((options.headers as Record<string, string> | undefined) ?? {}),
   };
-
-  // Only bodyless requests are retried, so a wake-up retry can never
-  // duplicate an OTP request, a purchase verification or a deletion request.
   const canRetry = options.body == null;
   const maxAttempts = WAKE_UP_DELAYS.length + 1;
 
@@ -192,9 +168,6 @@ export async function request<T = any>(
     }
 
     const data = await response.json().catch(() => ({}));
-    // Flutter's Dio interceptor never clears the stored token on a 401; only a
-    // failed session restore does. Screens that care about an expired session
-    // inspect ApiError.status themselves.
     if (!response.ok) {
       throw new ApiError(
         data?.message ?? data?.error ?? `Request failed (${response.status})`,

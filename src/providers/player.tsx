@@ -76,7 +76,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           },
         );
       } catch {
-        // Lock-screen controls are best-effort.
       }
     },
     [player],
@@ -124,12 +123,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     try {
       await player.seekTo(0);
     } catch {
-      // Ignore seek errors when no source is loaded.
     }
     try {
       player.clearLockScreenControls();
     } catch {
-      // Ignore unsupported platforms.
     }
     currentBookRef.current = null;
     currentEpisodeRef.current = null;
@@ -170,7 +167,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       try {
         await player.seekTo(seconds);
       } catch {
-        // Ignore seek errors before the source is loaded.
       }
     },
     [player],

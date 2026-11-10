@@ -94,9 +94,6 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
         fetchBooks({ query: query || undefined }),
         fetchUpcomingBooks(),
       ]);
-      // The API's `language` filter can never match the stored values (it
-      // lower-cases the query but compares exactly against "English"), so the
-      // full feed is kept here and each screen filters case-insensitively.
       const live = liveFeed;
       const coming = comingFeed;
       if (__DEV__) {
@@ -138,8 +135,6 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
         setLibrary(collection);
         setCollectionError(null);
       } catch (exception) {
-        // Kept separate from the catalogue error: a failed library request must
-        // not replace Home's loaded stories with an error card.
         setCollectionError(apiErrorMessage(exception));
       } finally {
         collectionLoadingRef.current = false;
@@ -223,12 +218,6 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
       library.find((item) => item.id === id),
     [books, upcoming, library],
   );
-
-  /**
-   * Mirrors Flutter's `_openNotificationBook`: resolve from the catalogue,
-   * force-refresh once when the book is unknown, and give up if it is still
-   * missing so no dead detail page opens.
-   */
   const resolveBook = useCallback(
     async (id: string): Promise<Book | null> => {
       if (!id) return null;

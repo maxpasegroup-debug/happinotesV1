@@ -32,7 +32,6 @@ export default function AdminBookEditorScreen() {
   const { showToast } = useToast();
 
   useEffect(() => {
-    // Keep the form usable if the route is opened directly.
     if (!draft.title && !draft.id) {
       updateDraft({});
     }

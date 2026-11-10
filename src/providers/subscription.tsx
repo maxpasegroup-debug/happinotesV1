@@ -109,10 +109,7 @@ export function SubscriptionProvider({
               ? result.subscriptionAutoRenewing
               : undefined,
         });
-        // Episode media URLs depend on ownership, so the catalogue must be
-        // refetched as soon as a subscription becomes active.
         await loadBooks({ forceRefresh: true }).catch(() => {
-          // Subscription state remains authoritative; the catalogue can refresh later.
         });
         setMessage(
           active ? "Subscription activated." : "Subscription is not active.",
@@ -181,8 +178,6 @@ export function SubscriptionProvider({
                 "",
             )
           : "";
-        // Monthly is the only plan offered to new customers. Historical yearly
-        // subscriptions remain verifiable and restorable through the backend.
         if (key === "monthly" && storeId) {
           parsed.push({
             key,
@@ -245,8 +240,6 @@ export function SubscriptionProvider({
   const price =
     subscriptions.find((item) => item.id === monthlyProductId)?.displayPrice ??
     null;
-  // Historical yearly plans are not purchasable but still need their store
-  // price for the renewal copy and the app-store deep link.
   const activePrice =
     subscriptions.find((item) => item.id === activeProductId)?.displayPrice ??
     null;

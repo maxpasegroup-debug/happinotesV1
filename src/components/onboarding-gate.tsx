@@ -56,7 +56,6 @@ export function OnboardingGate() {
           forceRefresh: true,
         });
       } catch {
-        // The auth layer surfaces API errors elsewhere; onboarding continues.
       }
       await offerSubscription();
     },

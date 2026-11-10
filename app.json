@@ -2,23 +2,30 @@
   "expo": {
     "name": "HappiNotes",
     "slug": "happinotes",
-    "version": "1.0.0",
+    "version": "1.0.3",
     "orientation": "portrait",
-    "icon": "./assets/images/splash-icon.png",
-    "scheme": "happinotesv1",
+    "icon": "./assets/images/app-icon-1024.png",
+    "scheme": "happinotes",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/images/splash-icon.png",
-      "bundleIdentifier": "com.happinotes.happinotesFlutter"
+      "icon": "./assets/images/app-icon-1024.png",
+      "bundleIdentifier": "com.happinotes.happinotesFlutter",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#FFFFFF",
-        "foregroundImage": "./assets/images/splash-icon.png"
-      },
-      "predictiveBackGestureEnabled": false,
       "package": "com.happinotes.happinotes_flutter",
-      "googleServicesFile": "./google-services.json"
+      "versionCode": 4,
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/app-icon-android-foreground.png",
+        "backgroundImage": "./assets/images/app-icon-android-background.png",
+        "monochromeImage": "./assets/images/app-icon-android-monochrome.png",
+        "backgroundColor": "#FFF8EC"
+      },
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "single",
@@ -45,8 +52,10 @@
       [
         "expo-notifications",
         {
+          "icon": "./assets/images/notification-icon.png",
           "color": "#F25F45",
-          "defaultChannel": "default"
+          "defaultChannel": "default",
+          "enableBackgroundRemoteNotifications": true
         }
       ]
     ],

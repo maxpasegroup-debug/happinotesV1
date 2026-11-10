@@ -68,8 +68,6 @@ export function AppTabBar({ state, emitter, navigateToTab }: TabBarProps) {
                 if (!focused && !event.defaultPrevented) {
                   navigateToTab(route.key);
                 }
-                // Flutter refreshes the collection whenever Library is selected,
-                // including when the tab is already focused.
                 if (route.name === "library") {
                   void loadCollection(true);
                 }
