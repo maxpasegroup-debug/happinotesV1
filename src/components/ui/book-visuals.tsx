@@ -1,5 +1,6 @@
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import type { Book } from "@/lib/types";
 
@@ -131,10 +132,23 @@ export function FeaturedCard({
           style={{ width: "100%", height: "100%" }}
         />
       ) : (
-        <View className="h-full w-full bg-[#3A1914]" />
+        // Flutter's placeholder cover: dark rust fading to near-black.
+        <LinearGradient
+          colors={["#5B2118", "#151515"]}
+          style={{ width: "100%", height: "100%" }}
+        />
       )}
-      <View className="absolute inset-0 bg-black/15" />
-      <View className="absolute inset-x-0 bottom-0 h-1/2 bg-black/30" />
+      {/*
+        Flutter's scrim: fully transparent through the top half, then a
+        gradient down to 90% black so the title always sits on darkness
+        instead of on the artwork.
+      */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={["rgba(0,0,0,0)", "rgba(0,0,0,0)", "rgba(0,0,0,0.9)"]}
+        locations={[0, 0.5, 1]}
+        style={{ position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 }}
+      />
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={saved ? "Remove from library" : "Save to library"}
@@ -142,7 +156,7 @@ export function FeaturedCard({
           event.stopPropagation();
           onToggleSaved();
         }}
-        className="absolute right-3 top-3 h-10 w-10 items-center justify-center rounded-full bg-black/45 active:bg-black/60"
+        className="absolute right-[14px] top-[14px] h-10 w-10 items-center justify-center rounded-full bg-black/45 active:bg-black/60"
       >
         <Ionicons
           name={saved ? "bookmark" : "bookmark-outline"}
@@ -152,7 +166,7 @@ export function FeaturedCard({
       </Pressable>
       <Text
         numberOfLines={2}
-        className="absolute bottom-4 left-4 right-4 text-2xl font-black leading-[26px] text-white"
+        className="absolute bottom-[18px] left-[18px] right-[18px] text-[24px] font-black leading-[25px] text-white"
       >
         {book.title}
       </Text>
