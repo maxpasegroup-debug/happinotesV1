@@ -12,11 +12,18 @@ import {
   useAudioPlayer,
   useAudioPlayerStatus,
 } from "expo-audio";
+import { router } from 'expo-router';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+import { fetchHappyBite, happyBiteAsBook, HappyBiteAccessError } from '@/lib/happy-bites';
+import { apiErrorMessage } from '@/lib/api';
+import { useAuth } from '@/providers/auth';
+import { useToast } from '@/providers/toast';
 import type { Book, BookEpisode } from "@/lib/types";
 
 type PlayerContextValue = {
   player: ReturnType<typeof useAudioPlayer>;
   status: ReturnType<typeof useAudioPlayerStatus>;
+  loadingHappyBiteId: string | null;
   currentBook: Book | null;
   currentEpisode: BookEpisode | null;
   playBook: (book: Book) => Promise<void>;
@@ -32,6 +39,12 @@ type PlayerContextValue = {
 const PlayerContext = createContext<PlayerContextValue | null>(null);
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const [lockedTitle, setLockedTitle] = useState<string | null>(null);
+  const [loadingHappyBiteId, setLoadingHappyBiteId] = useState<string | null>(null);
+  const playbackRequest = useRef(0);
+  const resuming = useRef(false);
   const player = useAudioPlayer(null, { updateInterval: 500 });
   const status = useAudioPlayerStatus(player);
   const [currentBook, setCurrentBook] = useState<Book | null>(null);
@@ -83,7 +96,26 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const playUrl = useCallback(
     async (book: Book, url: string, episode: BookEpisode | null) => {
-      if (!url) throw new Error("This book has no audio yet.");
+      const requestId = ++playbackRequest.current;
+      if (book.happyBiteId) {
+        setLoadingHappyBiteId(book.happyBiteId);
+        try {
+          const bite = await fetchHappyBite(book.happyBiteId);
+          if (requestId !== playbackRequest.current) throw new HappyBiteAccessError();
+          if (bite.locked) {
+            setLockedTitle(bite.title);
+            throw new HappyBiteAccessError();
+          }
+          book = happyBiteAsBook(bite);
+          episode = book.episodes[0];
+          url = book.audioUrl;
+        } finally {
+          if (requestId === playbackRequest.current) setLoadingHappyBiteId(null);
+        }
+      } else {
+        setLoadingHappyBiteId(null);
+      }
+      if (!url) throw new Error("This audio is not available yet.");
       currentBookRef.current = book;
       currentEpisodeRef.current = episode;
       setCurrentBook(book);
@@ -113,26 +145,75 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     [playEpisode, playUrl],
   );
 
-  const togglePlayback = useCallback(() => {
-    if (status.playing) player.pause();
-    else player.play();
-  }, [player, status.playing]);
-
   const stop = useCallback(async () => {
+    const requestId = ++playbackRequest.current;
+    setLoadingHappyBiteId(null);
+    const isHappyBite = Boolean(currentBookRef.current?.happyBiteId);
     player.pause();
     try {
       await player.seekTo(0);
     } catch {
     }
+    if (requestId !== playbackRequest.current) return;
     try {
       player.clearLockScreenControls();
     } catch {
     }
+    if (isHappyBite) player.replace(null);
     currentBookRef.current = null;
     currentEpisodeRef.current = null;
     setCurrentBook(null);
     setCurrentEpisode(null);
   }, [player]);
+
+  // A retained player must not carry a previous user's premium entitlement.
+  useEffect(() => {
+    ++playbackRequest.current;
+    // Synchronize the UI with the external audio session invalidated by this account change.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoadingHappyBiteId(null);
+    setLockedTitle(null);
+    if (currentBookRef.current?.happyBiteId) void stop();
+  }, [user?.id, user?.role, user?.subscriptionActive, user?.subscriptionExpiresAt, stop]);
+
+  const togglePlayback = useCallback(() => {
+    if (status.playing) { player.pause(); return; }
+    const current = currentBookRef.current;
+    if (!current?.happyBiteId) { player.play(); return; }
+    if (resuming.current) return;
+    resuming.current = true;
+    const requestId = ++playbackRequest.current;
+    setLoadingHappyBiteId(current.happyBiteId);
+    void (async () => {
+      try {
+        const bite = await fetchHappyBite(current.happyBiteId!);
+        if (requestId !== playbackRequest.current) return;
+        if (bite.locked) {
+          await stop();
+          setLockedTitle(bite.title);
+          return;
+        }
+        if (!bite.audioUrl) throw new Error('This audio is no longer available.');
+        const refreshed = happyBiteAsBook(bite);
+        // Preserve the playback position unless the admin replaced the audio.
+        if (refreshed.audioUrl !== current.audioUrl) player.replace(refreshed.audioUrl);
+        currentBookRef.current = refreshed;
+        currentEpisodeRef.current = refreshed.episodes[0];
+        setCurrentBook(refreshed);
+        setCurrentEpisode(refreshed.episodes[0]);
+        activateNowPlaying(refreshed, refreshed.episodes[0]);
+        player.play();
+      } catch (error) {
+        if (requestId === playbackRequest.current) {
+          await stop();
+          showToast(apiErrorMessage(error), false);
+        }
+      } finally {
+        resuming.current = false;
+        if (requestId === playbackRequest.current) setLoadingHappyBiteId(null);
+      }
+    })();
+  }, [activateNowPlaying, player, showToast, status.playing, stop]);
 
   const clearCurrent = useCallback(async () => {
     await stop();
@@ -177,6 +258,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       player,
       status,
       currentBook,
+      loadingHappyBiteId,
       currentEpisode,
       playBook,
       playEpisode,
@@ -191,6 +273,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       player,
       status,
       currentBook,
+      loadingHappyBiteId,
       currentEpisode,
       playBook,
       playEpisode,
@@ -204,7 +287,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <PlayerContext.Provider value={value}>{children}</PlayerContext.Provider>
+    <PlayerContext.Provider value={value}>
+      {children}
+      <ConfirmationModal visible={lockedTitle !== null} title="Premium Happy Bite" description={`“${lockedTitle ?? ''}” is included with HappiNotes Pro. ${user ? 'Use your existing Pro subscription to listen.' : 'Sign in to use your Pro subscription or view the available plans.'}`} icon="lock-closed-outline" confirmLabel={user ? 'View Pro plans' : 'Sign in'} cancelLabel="Not now" onCancel={() => setLockedTitle(null)} onConfirm={() => { setLockedTitle(null); router.push(user ? '/subscription' : '/auth'); }} />
+    </PlayerContext.Provider>
   );
 }
 

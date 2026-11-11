@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -16,8 +12,10 @@ import { router } from 'expo-router';
 import { useAuth } from '@/providers/auth';
 import { useToast } from '@/providers/toast';
 import { ScreenHeader } from '@/components/ui/action-button';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { Field } from '@/components/ui/field';
-import { ApiError, apiErrorMessage } from '@/lib/api';
+import { isExpiredDeletionSession } from '@/lib/account-deletion-status';
+import { apiErrorMessage } from '@/lib/api';
 import type {
   AccountDeletionRequestStatus,
   AccountDeletionStatus,
@@ -45,7 +43,7 @@ function statusTitle(status: AccountDeletionStatus) {
 function statusBody(status: AccountDeletionStatus) {
   switch (status) {
     case 'requested':
-      return 'Your request was received and account access is blocked. This does not mean deletion is complete. You can refresh status without creating another request.';
+      return 'Your deletion request has been sent to the admin team and account access is blocked. Status updates automatically. This does not mean deletion is complete.';
     case 'processing':
       return 'Processing removes your password, OTPs, reset and reauthentication tokens; replaces your profile name with a generic label; removes your email and phone; resets profile settings; and clears favourites, collections, push-token references, purchased-book access and HappiNotes Premium access. Your store purchase and subscription transaction records, support records, provider data, logs, backups and deletion audit handling are still awaiting policy decisions. The request will pause at the policy gate and is not complete. Google Play and Apple subscriptions are not cancelled automatically; manage or cancel them in the relevant store.';
     case 'failed_retryable':
@@ -69,26 +67,19 @@ function isPending(status: AccountDeletionStatus | undefined) {
   );
 }
 
-/**
- * A 401 only means the saved session is dead for these backend messages.
- * Anything else (for example a wrong password during reauthentication) must
- * stay an inline error so the user is not signed out.
- */
-function isSessionExpired(error: unknown): boolean {
-  if (!(error instanceof ApiError) || error.status !== 401) return false;
-  const message = error.message ?? '';
+function DeletionDetail({ icon, title, description }: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  description: string;
+}) {
   return (
-    message.includes('Invalid or expired token') ||
-    message.includes('User not found') ||
-    message.includes('Account deletion is no longer available')
-  );
-}
-
-function isDeletionNotFound(error: unknown): boolean {
-  return (
-    error instanceof ApiError &&
-    error.status === 401 &&
-    error.message === 'Deletion request not found'
+    <View className="mb-4 flex-row items-start">
+      <Ionicons name={icon} size={20} color="#A8A29E" style={{ marginTop: 2 }} />
+      <View className="ml-3 flex-1">
+        <Text className="text-[14px] font-bold text-[#241F1C] dark:text-[#F8F5F0]">{title}</Text>
+        <Text className="mt-1 text-[13px] leading-[20px] text-[#6B625C] dark:text-[#A8A29E]">{description}</Text>
+      </View>
+    </View>
   );
 }
 
@@ -107,7 +98,11 @@ export default function DeleteAccountScreen() {
   const [loading, setLoading] = useState(false);
   const [proof, setProof] = useState<string | null>(null);
   const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
-  const [reauthVisible, setReauthVisible] = useState(false);
+  const [dialog, setDialog] = useState<'intro' | 'reauth' | 'final' | 'completed' | null>(null);
+  const [dialogError, setDialogError] = useState<string | null>(null);
+  const operationInFlight = useRef(false);
+  const requestAttempted = useRef(false);
+  const statusInFlight = useRef(false);
   const [credential, setCredential] = useState('');
   const completedHandled = useRef(false);
 
@@ -121,40 +116,46 @@ export default function DeleteAccountScreen() {
     async (result: AccountDeletionRequestStatus) => {
       if (result.status !== 'completed' || completedHandled.current) return;
       completedHandled.current = true;
-      await new Promise<void>((resolve) => {
-        Alert.alert(
-          'Account deletion completed',
-          `The backend confirmed that the deletion workflow completed. Save this reference for support: ${
-            result.reference ?? 'not available'
-          }. The app will sign you out, so you will no longer be able to check status here.`,
-          [{ text: 'Continue', onPress: () => resolve() }],
-          { cancelable: false },
-        );
-      });
+      setDialog('completed');
+    },
+    [],
+  );
+
+  const finishDeletion = async () => {
+    if (operationInFlight.current) return;
+    operationInFlight.current = true;
+    setLoading(true);
+    setDialogError(null);
+    try {
       await logout();
       showToast('Your HappiNotes account deletion is complete.');
       router.replace('/');
-    },
-    [logout, showToast],
-  );
+    } catch (exception) {
+      setDialogError(apiErrorMessage(exception));
+    } finally {
+      operationInFlight.current = false;
+      setLoading(false);
+    }
+  };
 
-  const loadStatus = useCallback(async () => {
-    setCheckingStatus(true);
+  const loadStatus = useCallback(async (silent = false) => {
+    if (statusInFlight.current) return;
+    statusInFlight.current = true;
+    if (!silent) setCheckingStatus(true);
     setError(null);
     try {
       const result = await getAccountDeletionStatus();
       setStatus(result);
-      await handleCompleted(result);
+      if (result) await handleCompleted(result);
     } catch (exception) {
-      if (isDeletionNotFound(exception)) {
-        setStatus(null);
-      } else if (isSessionExpired(exception)) {
+      if (isExpiredDeletionSession(exception)) {
         await expireSession();
       } else {
         setError(apiErrorMessage(exception));
       }
     } finally {
-      setCheckingStatus(false);
+      statusInFlight.current = false;
+      if (!silent) setCheckingStatus(false);
     }
   }, [expireSession, getAccountDeletionStatus, handleCompleted]);
 
@@ -165,6 +166,12 @@ export default function DeleteAccountScreen() {
     return () => clearTimeout(timer);
   }, [loadStatus]);
 
+  useEffect(() => {
+    if (!isPending(status?.status) || loading || checkingStatus) return;
+    const timer = setInterval(() => { void loadStatus(true); }, 5000);
+    return () => clearInterval(timer);
+  }, [status?.status, loading, checkingStatus, loadStatus]);
+
   const makeKey = () => {
     const random = Array.from({ length: 4 }, () =>
       Math.random().toString(36).slice(2),
@@ -174,99 +181,74 @@ export default function DeleteAccountScreen() {
 
   const submitRequest = useCallback(
     async (proofValue: string, key: string) => {
+      if (operationInFlight.current) return;
+      operationInFlight.current = true;
+      requestAttempted.current = true;
       setLoading(true);
       setError(null);
+      setDialogError(null);
       try {
         const result = await requestAccountDeletion(proofValue, key);
         setProof(null);
         setIdempotencyKey(null);
+        requestAttempted.current = false;
         setStatus(result);
+        if (result.status !== 'completed') {
+          setDialog(null);
+          showToast('Deletion request sent to the admin team.');
+        }
         await handleCompleted(result);
       } catch (exception) {
-        if (isSessionExpired(exception)) {
+        if (isExpiredDeletionSession(exception)) {
           await expireSession();
         } else {
-          setError(
-            `${apiErrorMessage(exception)} If the request was accepted, use Check status before trying again.`,
-          );
+          setDialog(null);
+          setError(`${apiErrorMessage(exception)} If the request was accepted, use Check status before trying again.`);
         }
       } finally {
+        operationInFlight.current = false;
         setLoading(false);
       }
     },
-    [expireSession, handleCompleted, requestAccountDeletion],
+    [expireSession, handleCompleted, requestAccountDeletion, showToast],
   );
 
-  const startDeletion = async () => {
-    if (loading || isPending(status?.status)) return;
-    const confirmed = await new Promise<boolean>((resolve) => {
-      let settled = false;
-      const finish = (value: boolean) => {
-        if (settled) return;
-        settled = true;
-        resolve(value);
-      };
-      Alert.alert(
-        'Delete your account?',
-        'This request blocks access to your account. Current processing removes authentication data, anonymises ordinary profile fields, removes email and phone, clears saved preferences and device tokens, and revokes HappiNotes Premium and purchased-book access. Purchase and subscription evidence, provider records, support records, logs, backups and minimal deletion history still require approved handling, so deletion may pause before completion.\n\nDeleting your HappiNotes account does not cancel a Google Play or App Store subscription. Manage or cancel that subscription in the store before continuing if needed.',
-        [
-          { text: 'Keep account', style: 'cancel', onPress: () => finish(false) },
-          { text: 'Continue', style: 'destructive', onPress: () => finish(true) },
-        ],
-        { cancelable: true, onDismiss: () => finish(false) },
-      );
-    });
-    if (confirmed) {
-      setCredential('');
-      setReauthVisible(true);
+  const startDeletion = () => {
+    if (loading || checkingStatus || isPending(status?.status)) return;
+    setDialogError(null);
+    setDialog('intro');
+  };
+
+  const closeDialog = () => {
+    if (operationInFlight.current) return;
+    setCredential('');
+    setDialogError(null);
+    if (dialog === 'final' && !requestAttempted.current) {
+      setProof(null);
+      setIdempotencyKey(null);
     }
+    setDialog(null);
   };
 
   const verifyCredential = async () => {
-    if (credential.length < 6) return;
-    setReauthVisible(false);
+    if (credential.length < 6 || operationInFlight.current) return;
+    operationInFlight.current = true;
     setLoading(true);
-    setError(null);
+    setDialogError(null);
     try {
       const nextProof = await requestDeletionReauth(credential);
-      const key = idempotencyKey ?? makeKey();
       setProof(nextProof.proof);
-      setIdempotencyKey(key);
-      const finalConfirmed = await new Promise<boolean>((resolve) => {
-        let settled = false;
-        const finish = (value: boolean) => {
-          if (settled) return;
-          settled = true;
-          resolve(value);
-        };
-        Alert.alert(
-          'Final confirmation',
-          'Send the account-deletion request now? This cannot be undone once processing begins. Your store subscription is separate and will not be cancelled by this request.',
-          [
-            { text: 'Cancel', style: 'cancel', onPress: () => finish(false) },
-            {
-              text: 'Delete account',
-              style: 'destructive',
-              onPress: () => finish(true),
-            },
-          ],
-          { cancelable: true, onDismiss: () => finish(false) },
-        );
-      });
-      if (!finalConfirmed) {
-        setProof(null);
-        setIdempotencyKey(null);
-        setLoading(false);
-        return;
-      }
-      setLoading(false);
-      await submitRequest(nextProof.proof, key);
+      setIdempotencyKey(idempotencyKey ?? makeKey());
+      setCredential('');
+      setDialog('final');
     } catch (exception) {
-      if (isSessionExpired(exception)) {
+      if (isExpiredDeletionSession(exception)) {
         await expireSession();
       } else {
-        setError(apiErrorMessage(exception));
+        setDialogError(apiErrorMessage(exception));
       }
+    } finally {
+      operationInFlight.current = false;
       setLoading(false);
     }
   };
@@ -276,7 +258,8 @@ export default function DeleteAccountScreen() {
       await loadStatus();
       return;
     }
-    await submitRequest(proof, idempotencyKey);
+    setDialogError(null);
+    setDialog('final');
   };
 
   const warning =
@@ -287,12 +270,22 @@ export default function DeleteAccountScreen() {
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-[#111111]">
       <ScreenHeader title="Delete account" onBack={() => router.back()} />
-      <ScrollView contentContainerClassName="px-5 pb-8 pt-2">
-        <View className="items-center">
-          <Ionicons name="trash-outline" size={64} color="#C62828" />
-          <Text className="mt-4 text-center text-[24px] font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">
-            Account deletion
+      <ScrollView contentContainerClassName="px-5 pb-8 pt-4">
+        <View className="items-center pb-6">
+          <View className="h-[72px] w-[72px] items-center justify-center rounded-[24px] bg-[#FDECE9] dark:bg-[#382321]">
+            <Ionicons name="trash-outline" size={30} color="#D65348" />
+          </View>
+          <Text className="mt-4 text-center text-[24px] font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">Your account, your choice</Text>
+          <Text className="mt-2 max-w-[320px] text-center text-[14px] leading-[22px] text-[#6B625C] dark:text-[#A8A29E]">
+            Take a moment to review what happens before you request deletion.
           </Text>
+        </View>
+
+        <View className="rounded-[22px] bg-[#F8F6F4] p-5 dark:bg-[#1B1B1B]">
+          <Text className="mb-4 text-[16px] font-bold text-[#241F1C] dark:text-[#F8F5F0]">Before you continue</Text>
+          <DeletionDetail icon="lock-closed-outline" title="Account access ends" description="Your profile, saved preferences and access to purchased books and Premium are removed during processing." />
+          <DeletionDetail icon="card-outline" title="Manage store subscriptions separately" description="Deleting your account does not cancel Google Play or App Store billing. Manage or cancel your subscription in the store." />
+          <DeletionDetail icon="time-outline" title="Deletion may take time" description="Some records need further review. A request may pause before deletion is complete. You can check its status here." />
         </View>
 
         {error ? (
@@ -330,7 +323,7 @@ export default function DeleteAccountScreen() {
               ) : null}
               <Pressable
                 accessibilityRole="button"
-                disabled={loading}
+                disabled={loading || checkingStatus}
                 onPress={() => void loadStatus()}
                 className="mt-2.5 flex-row items-center self-end rounded-lg px-2 py-2 active:bg-black/5 dark:active:bg-white/10"
               >
@@ -405,31 +398,16 @@ export default function DeleteAccountScreen() {
           </View>
         ) : null}
 
-        <Text className="mt-5 text-center text-[14px] leading-[21px] text-[#241F1C] dark:text-[#F8F5F0]">
-          You will confirm your password or PIN before a request is sent. Save
-          the reference and private status code shown after submission.
-          Email-based recovery may stop once contact details are erased;
-          phone-only external verification is not available.
-        </Text>
-
-        <View className="mt-5 rounded-[14px] border border-[#D9D0C8]/50 p-4 dark:border-[#4A4542]">
-          <Text className="text-[16px] font-bold text-[#241F1C] dark:text-[#F8F5F0]">
-            Before you continue
-          </Text>
-          <Text className="mt-2.5 text-[14px] leading-[21px] text-[#241F1C] dark:text-[#F8F5F0]">
-            Account access, purchased-book access and HappiNotes Premium access
-            are revoked during processing. Purchase and subscription records
-            remain behind the policy gate, so the request may pause before
-            completion.{'\n'}
-            Google Play/App Store billing is separate; this action does not
-            cancel it.{'\n'}
-            Cancel or manage billing in the relevant store.
+        <View className="mt-5 flex-row items-start px-1">
+          <Ionicons name="shield-checkmark-outline" size={17} color="#A8A29E" />
+          <Text className="ml-2 flex-1 text-[12px] leading-[19px] text-[#6B625C] dark:text-[#A8A29E]">
+            We’ll verify your password or PIN first. Save your request reference and private status code after submitting; recovery may be unavailable once contact details are removed.
           </Text>
         </View>
 
         <Pressable
           accessibilityRole="button"
-          disabled={loading}
+          disabled={loading || checkingStatus}
           onPress={() => void loadStatus()}
           className="mt-3.5 flex-row items-center justify-center gap-2 py-3 active:opacity-70"
         >
@@ -438,57 +416,51 @@ export default function DeleteAccountScreen() {
         </Pressable>
       </ScrollView>
 
-      <Modal
-        visible={reauthVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setReauthVisible(false)}
+      <ConfirmationModal
+        visible={dialog !== null}
+        title={dialog === 'completed' ? 'Account deletion completed' : dialog === 'reauth' ? 'Confirm your identity' : dialog === 'final' ? 'Delete your account?' : 'Ready to continue?'}
+        description={dialog === 'completed'
+          ? `Your deletion is complete. Save this reference for support: ${status?.reference ?? 'not available'}. Continuing will sign you out.`
+          : dialog === 'reauth'
+            ? 'Enter your password or PIN to protect your account. No deletion request is sent at this step.'
+            : dialog === 'final'
+              ? 'This sends your deletion request and blocks account access. It cannot be undone once processing begins. Your store subscription will not be cancelled.'
+              : 'You’ll verify your identity, then confirm deletion. Your profile and saved content will be removed during processing. Some purchase, subscription and other records may be retained while your request is reviewed.'}
+        icon={dialog === 'completed' ? 'checkmark-circle-outline' : dialog === 'reauth' ? 'lock-closed-outline' : 'trash-outline'}
+        confirmLabel={dialog === 'completed' ? 'Continue to sign in' : dialog === 'reauth' ? 'Verify identity' : dialog === 'final' ? 'Delete account' : 'Continue'}
+        cancelLabel={dialog === 'reauth' ? 'Cancel' : 'Keep my account'}
+        destructive={dialog === 'intro' || dialog === 'final'}
+        loading={loading}
+        disabled={dialog === 'reauth' && credential.length < 6}
+        error={dialogError}
+        onCancel={dialog === 'completed' ? undefined : closeDialog}
+        onConfirm={() => {
+          if (dialog === 'completed') void finishDeletion();
+          else if (dialog === 'reauth') void verifyCredential();
+          else if (dialog === 'final' && proof && idempotencyKey) void submitRequest(proof, idempotencyKey);
+          else if (dialog === 'intro') { setCredential(''); setDialog('reauth'); }
+        }}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          className="flex-1 items-center justify-center bg-black/50 px-6"
-        >
-          <View className="w-full max-w-[420px] rounded-2xl bg-white p-5 dark:bg-[#1B1B1B]">
-            <Text className="text-xl font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">
-              Confirm your identity
-            </Text>
-            <View className="mt-3">
-              <Field
-                label="Password or PIN"
-                value={credential}
-                onChangeText={setCredential}
-                secureTextEntry
-                autoFocus
-                autoCorrect={false}
-                autoCapitalize="none"
-                returnKeyType="done"
-                onSubmitEditing={() => void verifyCredential()}
-              />
-            </View>
-            <View className="mt-4 flex-row justify-end gap-2">
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setReauthVisible(false)}
-                className="rounded-lg px-4 py-2.5 active:bg-black/5 dark:active:bg-white/10"
-              >
-                <Text className="font-bold text-[#241F1C] dark:text-[#F8F5F0]">
-                  Cancel
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                disabled={credential.length < 6}
-                onPress={() => void verifyCredential()}
-                className={`rounded-lg bg-coral px-4 py-2.5 active:opacity-80 ${
-                  credential.length < 6 ? 'opacity-50' : ''
-                }`}
-              >
-                <Text className="font-extrabold text-white">Verify</Text>
-              </Pressable>
-            </View>
+        {dialog === 'reauth' ? (
+          <Field
+            label="Password or PIN"
+            value={credential}
+            onChangeText={setCredential}
+            secureTextEntry
+            autoFocus
+            autoCorrect={false}
+            autoCapitalize="none"
+            returnKeyType="done"
+            editable={!loading}
+            onSubmitEditing={() => void verifyCredential()}
+          />
+        ) : null}
+        {dialog === 'intro' ? (
+          <View className="rounded-2xl bg-[#F8F6F4] p-4 dark:bg-[#262321]">
+            <Text className="text-[13px] leading-5 text-[#6B625C] dark:text-[#B8B0AA]">Google Play and App Store subscriptions must be managed or cancelled separately in the store.</Text>
           </View>
-        </KeyboardAvoidingView>
-      </Modal>
+        ) : null}
+      </ConfirmationModal>
     </SafeAreaView>
   );
 }

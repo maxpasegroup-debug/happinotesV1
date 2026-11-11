@@ -1,3 +1,4 @@
+import { useAppMotion } from '@/providers/motion';
 import { useEffect, useState } from "react";
 import { Animated, View, useWindowDimensions } from "react-native";
 import { USE_NATIVE_DRIVER } from '@/lib/app-environment';
@@ -13,9 +14,11 @@ export function SkeletonBox({
   radius?: number;
   className?: string;
 }) {
+  const { animationsEnabled } = useAppMotion();
   const [opacity] = useState(() => new Animated.Value(0.45));
 
   useEffect(() => {
+    if (!animationsEnabled) { opacity.setValue(0.65); return; }
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(opacity, {
@@ -32,7 +35,7 @@ export function SkeletonBox({
     );
     animation.start();
     return () => animation.stop();
-  }, [opacity]);
+  }, [opacity, animationsEnabled]);
 
   return (
     <Animated.View

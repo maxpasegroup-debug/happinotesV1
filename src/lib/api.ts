@@ -217,6 +217,7 @@ export function parseBook(json: any): Book {
     priceInr: Number(json?.priceInr ?? 0),
     status: String(json?.status ?? "live"),
     duration: Number(json?.totalDurationSeconds ?? 0),
+    createdAt: json?.createdAt ? String(json.createdAt) : undefined,
     episodes,
   };
 }

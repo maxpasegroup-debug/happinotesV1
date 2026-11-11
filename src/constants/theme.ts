@@ -13,7 +13,9 @@ export const Colors = {
     background: '#000000',
     backgroundElement: '#212225',
     backgroundSelected: '#2E3135',
-    textSecondary: 
+    textSecondary: '#A0A3AA',
+  },
+};
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 export const Fonts = Platform.select({
   ios: {

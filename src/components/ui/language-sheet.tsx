@@ -1,3 +1,4 @@
+import { useAppMotion } from '@/providers/motion';
 import { Modal, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -17,11 +18,12 @@ export function LanguageSheet({
   onClose?: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const { animationsEnabled } = useAppMotion();
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType={animationsEnabled ? 'slide' : 'none'}
       statusBarTranslucent
       onRequestClose={onClose}
     >

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useAppMotion } from '@/providers/motion';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
@@ -68,13 +69,14 @@ function NotificationTile({
 }
 
 export default function NotificationsScreen() {
+  const { animationsEnabled } = useAppMotion();
   const { items, loading, error, load } = useNotifications();
   const { resolveBook } = useBooks();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const sheetHeight = Math.min(520, Math.max(320, height - insets.top - 40));
   const [sheetDrag] = useState(() => new Animated.Value(0));
-  const [handlePan] = useState(() =>
+  const handlePan = useMemo(() =>
     PanResponder.create({
       onMoveShouldSetPanResponder: (_event, gesture) =>
         gesture.dy > 6 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
@@ -83,16 +85,19 @@ export default function NotificationsScreen() {
       },
       onPanResponderRelease: (_event, gesture) => {
         if (gesture.dy > 70 || gesture.vy > 0.5) {
+          if (!animationsEnabled) { router.back(); return; }
           Animated.timing(sheetDrag, {
             toValue: sheetHeight,
             duration: 170,
             useNativeDriver: USE_NATIVE_DRIVER,
           }).start(() => router.back());
         } else {
+          if (!animationsEnabled) { sheetDrag.setValue(0); return; }
           Animated.spring(sheetDrag, { toValue: 0, useNativeDriver: USE_NATIVE_DRIVER }).start();
         }
       },
     }),
+    [animationsEnabled, sheetDrag, sheetHeight],
   );
 
   useEffect(() => {

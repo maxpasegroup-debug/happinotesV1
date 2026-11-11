@@ -246,6 +246,11 @@ export default function AdminScreen() {
               className="flex-1"
               style={{ display: tab === 1 ? 'flex' : 'none' }}
             >
+          <Pressable accessibilityRole="button" onPress={() => router.push('/admin/happy-bites')} className="mx-4 mt-3 flex-row items-center rounded-xl border border-[#D9D0C8]/60 px-4 py-3 dark:border-[#4A4542]">
+            <Ionicons name="sparkles-outline" size={20} color="#F25F45" />
+            <View className="ml-3 flex-1"><Text className="font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">Content Management → Happy Bites</Text><Text className="mt-0.5 text-xs text-[#6B625C] dark:text-[#A8A29E]">Manage short free audio</Text></View>
+            <Ionicons name="chevron-forward" size={19} color="#A8A29E" />
+          </Pressable>
           {books.length === 0 ? (
             <View className="flex-1 items-center justify-center px-6">
               <Text className="text-center text-[15px] text-[#241F1C] dark:text-[#F8F5F0]">

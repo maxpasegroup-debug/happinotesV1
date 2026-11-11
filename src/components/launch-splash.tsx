@@ -1,12 +1,15 @@
+import { useAppMotion } from '@/providers/motion';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Animated, Image, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { USE_NATIVE_DRIVER } from '@/lib/app-environment';
 
 export function LaunchSplash() {
+  const { animationsEnabled } = useAppMotion();
   const [progress] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
+    if (!animationsEnabled) { progress.setValue(1); return; }
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(progress, {
@@ -23,7 +26,7 @@ export function LaunchSplash() {
     );
     animation.start();
     return () => animation.stop();
-  }, [progress]);
+  }, [progress, animationsEnabled]);
 
   const scale = progress.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] });
   const opacity = progress.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1] });

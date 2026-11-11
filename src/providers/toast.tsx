@@ -1,3 +1,4 @@
+import { useAppMotion } from '@/providers/motion';
 import {
   createContext,
   useCallback,
@@ -25,19 +26,33 @@ type ToastContextValue = {
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const { animationsEnabled } = useAppMotion();
+  const motion = useRef(animationsEnabled);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [opacity] = useState(() => new Animated.Value(0));
   const [translate] = useState(() => new Animated.Value(12));
   const insets = useSafeAreaInsets();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  useEffect(() => {
+    motion.current = animationsEnabled;
+    if (!animationsEnabled) {
+      opacity.stopAnimation();
+      translate.stopAnimation();
+      opacity.setValue(1);
+      translate.setValue(0);
+    }
+  }, [animationsEnabled, opacity, translate]);
+
   const showToast = useCallback(
     (message: string, success = true) => {
       if (timer.current) clearTimeout(timer.current);
       setToast({ message, success, key: Date.now() });
-      opacity.setValue(0);
-      translate.setValue(12);
-      Animated.parallel([
+      opacity.stopAnimation();
+      translate.stopAnimation();
+      opacity.setValue(motion.current ? 0 : 1);
+      translate.setValue(motion.current ? 12 : 0);
+      if (motion.current) Animated.parallel([
         Animated.timing(opacity, {
           toValue: 1,
           duration: 180,
@@ -50,11 +65,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         }),
       ]).start();
       timer.current = setTimeout(() => {
+        if (!motion.current) { setToast(null); return; }
         Animated.timing(opacity, {
           toValue: 0,
           duration: 160,
           useNativeDriver: USE_NATIVE_DRIVER,
-        }).start(() => setToast(null));
+        }).start(({ finished }) => { if (finished) setToast(null); });
       }, 3000);
     },
     [opacity, translate],

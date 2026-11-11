@@ -16,6 +16,7 @@ import {
   saveToken,
   apiErrorMessage,
 } from "@/lib/api";
+import { readDeletionStatus } from "@/lib/account-deletion-status";
 import type {
   AccountDeletionRequestStatus,
   DeletionReauthProof,
@@ -50,7 +51,7 @@ type AuthContextValue = {
     proof: string,
     idempotencyKey: string,
   ) => Promise<AccountDeletionRequestStatus>;
-  getAccountDeletionStatus: () => Promise<AccountDeletionRequestStatus>;
+  getAccountDeletionStatus: () => Promise<AccountDeletionRequestStatus | null>;
   updateSubscription: (patch: SubscriptionPatch) => void;
   updatePurchasedBooks: (ids: string[]) => void;
 };
@@ -195,10 +196,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const getAccountDeletionStatus = useCallback(async () => {
-    const result = await request<any>("/auth/me/deletion-request");
-    return parseDeletionStatus(result);
-  }, []);
+  const getAccountDeletionStatus = useCallback(() => readDeletionStatus(
+    async () => {
+      const result = await request<any>("/auth/me/deletion-request", { cache: "no-store" });
+      return parseDeletionStatus(result);
+    },
+    async () => {
+      const result = await request<any>("/auth/me", { cache: "no-store" });
+      if (!result?.user || !parseUser(result.user).id) throw new Error("Could not verify your session. Please try again.");
+    },
+  ), []);
 
   const updateSubscription = useCallback((patch: SubscriptionPatch) => {
     setUser((current) => {

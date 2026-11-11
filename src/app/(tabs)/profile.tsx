@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useAppMotion } from '@/providers/motion';
+import { useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -10,7 +11,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useAuth } from '@/providers/auth';
-import { useAppTheme } from '@/providers/theme';
+import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+import { ThemePressable, ThemeText, ThemeView } from '@/components/ui/theme-motion';
+import { AppearanceToggle } from '@/components/ui/appearance-toggle';
 import { useBooks } from '@/providers/books';
 import { usePlayer } from '@/providers/player';
 import { useToast } from '@/providers/toast';
@@ -46,17 +49,17 @@ function SettingRow({
         color={danger ? '#C62828' : '#A8A29E'}
       />
       <View className="ml-4 flex-1">
-        <Text
-          className={`text-[16px] font-semibold ${
-            danger ? 'text-[#C62828]' : 'text-[#241F1C] dark:text-[#F8F5F0]'
-          }`}
+        <ThemeText
+          lightColor={danger ? '#C62828' : '#241F1C'}
+          darkColor={danger ? '#C62828' : '#F8F5F0'}
+          className="text-[16px] font-semibold"
         >
           {title}
-        </Text>
+        </ThemeText>
         {subtitle ? (
-          <Text className="mt-0.5 text-[13px] text-[#6B625C] dark:text-[#A8A29E]">
+          <ThemeText lightColor="#6B625C" darkColor="#A8A29E" className="mt-0.5 text-[13px]">
             {subtitle}
-          </Text>
+          </ThemeText>
         ) : null}
       </View>
       {trailing}
@@ -65,16 +68,20 @@ function SettingRow({
 }
 
 function Divider() {
-  return <View className="h-px bg-[#D9D0C8]/50 dark:bg-[#4A4542]/60" />;
+  return <ThemeView className="h-px" lightBackground="rgba(217,208,200,0.5)" darkBackground="rgba(74,69,66,0.6)" />;
 }
 
 export default function ProfileTab() {
   const { user, updateLanguage, logout } = useAuth();
-  const { dark, toggle } = useAppTheme();
+  const { enabled: animationsOn, reducedMotion, ready: motionReady, setEnabled: setAnimations } = useAppMotion();
   const { loadBooks, reset: resetBooks } = useBooks();
   const { stop } = usePlayer();
   const { showToast } = useToast();
   const [languageOpen, setLanguageOpen] = useState(false);
+  const [logoutVisible, setLogoutVisible] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const logoutInFlight = useRef(false);
 
   const subscriptionActive = user?.subscriptionActive === true;
 
@@ -93,101 +100,126 @@ export default function ProfileTab() {
   };
 
   const signOut = async () => {
-    await stop();
-    await logout();
-    resetBooks();
-    router.replace('/');
+    if (logoutInFlight.current) return;
+    logoutInFlight.current = true;
+    setLoggingOut(true);
+    setLogoutError(null);
+    try {
+      await stop();
+      await logout();
+      resetBooks();
+      setLogoutVisible(false);
+      router.replace('/');
+    } catch (exception) {
+      setLogoutError(apiErrorMessage(exception));
+    } finally {
+      logoutInFlight.current = false;
+      setLoggingOut(false);
+    }
   };
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-white dark:bg-[#111111]">
-      <ScrollView contentContainerClassName="px-5 pb-8 pt-4">
-        <Text className="text-[28px] font-black text-[#241F1C] dark:text-[#F8F5F0]">
-          Profile
-        </Text>
-
-        <View className="mt-6 items-center">
-          <View className="h-[76px] w-[76px] items-center justify-center rounded-full bg-coral">
-            <Text className="text-[30px] font-black text-white">
-              {user?.name ? user.name[0].toUpperCase() : 'U'}
-            </Text>
+    <ThemeView className="flex-1" lightBackground="#FFFFFF" darkBackground="#111111">
+      <SafeAreaView edges={['top']} className="flex-1">
+        <ScrollView contentContainerClassName="px-5 pb-8 pt-4">
+          <View className="flex-row items-center justify-between">
+            <ThemeText lightColor="#241F1C" darkColor="#F8F5F0" className="flex-1 text-[28px] font-black">Profile</ThemeText>
+            <AppearanceToggle />
           </View>
-          <Text className="mt-3 text-center text-xl font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">
-            {user?.name ?? ''}
-          </Text>
-          <Text className="mt-0.5 text-center text-[15px] text-[#A8A29E]">
-            {user?.email ?? user?.phoneNumber ?? ''}
-          </Text>
-        </View>
 
-        <View className="mt-7">
-          <SettingRow
-            icon={dark ? 'moon' : 'sunny'}
-            title="Appearance"
-            subtitle={dark ? 'Dark mode' : 'Light mode'}
-            trailing={
-              <Switch
-                value={dark}
-                onValueChange={() => void toggle()}
-                trackColor={{ false: '#D9D0C8', true: '#F25F4580' }}
-                thumbColor={dark ? '#F25F45' : '#F4F3F4'}
-              />
-            }
-          />
-          <Divider />
-          <SettingRow
-            icon={subscriptionActive ? 'shield-checkmark' : 'diamond-outline'}
-            title="HappiNotes Premium"
-            subtitle={
-              subscriptionActive
-                ? `${user?.subscriptionPlan === 'yearly' ? 'Yearly' : 'Monthly'} subscription active`
-                : 'Choose the monthly Premium plan'
-            }
-            onPress={() => router.push('/subscription')}
-            trailing={<Ionicons name="chevron-forward" size={20} color="#A8A29E" />}
-          />
-          <Divider />
-          <SettingRow
-            icon="language"
-            title="Language preference"
-            subtitle={user?.languagePreference ?? 'all'}
-            onPress={() => setLanguageOpen(true)}
-            trailing={<Ionicons name="chevron-forward" size={20} color="#A8A29E" />}
-          />
-          <Divider />
-          <SettingRow
-            icon="document-text-outline"
-            title="Legal"
-            onPress={() => router.push('/legal')}
-            trailing={<Ionicons name="chevron-forward" size={20} color="#A8A29E" />}
-          />
-          <Divider />
-          <SettingRow
-            icon="trash-outline"
-            title="Delete account"
-            subtitle="Permanently remove your HappiNotes account"
-            danger
-            onPress={() => router.push('/delete-account')}
-            trailing={<Ionicons name="chevron-forward" size={20} color="#A8A29E" />}
-          />
-        </View>
+          <View className="mt-6 flex-row items-center">
+            <View className="h-[76px] w-[76px] items-center justify-center rounded-full bg-coral">
+              <Text className="text-[30px] font-black text-white">
+                {Array.from(user?.name?.trim() ?? '')[0]?.toUpperCase() || 'U'}
+              </Text>
+            </View>
+            <View className="ml-4 flex-1">
+              <ThemeText lightColor="#241F1C" darkColor="#F8F5F0" className="text-xl font-extrabold">{user?.name ?? ''}</ThemeText>
+              <ThemeText lightColor="#6B625C" darkColor="#A8A29E" className="mt-1 text-[14px]">{user?.email ?? user?.phoneNumber ?? ''}</ThemeText>
+            </View>
+          </View>
 
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => void signOut()}
-          className="mt-5 min-h-[52px] flex-row items-center justify-center gap-2 rounded-[15px] border border-[#D9D0C8] px-5 active:opacity-70 dark:border-[#4A4542]"
-        >
-          <Ionicons name="log-out-outline" size={21} color="#F25F45" />
-          <Text className="text-[15px] font-extrabold text-coral">Logout</Text>
-        </Pressable>
-      </ScrollView>
+          <View className="mt-7">
+            <SettingRow
+              icon={subscriptionActive ? 'shield-checkmark' : 'diamond-outline'}
+              title="HappiNotes Premium"
+              subtitle={
+                subscriptionActive
+                  ? `${user?.subscriptionPlan === 'yearly' ? 'Yearly' : 'Monthly'} subscription active`
+                  : 'Choose the monthly Premium plan'
+              }
+              onPress={() => router.push('/subscription')}
+              trailing={<Ionicons name="chevron-forward" size={20} color="#A8A29E" />}
+            />
+            <Divider />
+            <SettingRow
+              icon="language"
+              title="Language preference"
+              subtitle={user?.languagePreference ?? 'all'}
+              onPress={() => setLanguageOpen(true)}
+              trailing={<Ionicons name="chevron-forward" size={20} color="#A8A29E" />}
+            />
+            <Divider />
+            <View className="flex-row items-center py-3.5">
+              <Ionicons name="sparkles-outline" size={23} color="#A8A29E" />
+              <View className="ml-4 mr-3 flex-1">
+                <ThemeText lightColor="#241F1C" darkColor="#F8F5F0" className="text-[16px] font-semibold">App animations</ThemeText>
+                <ThemeText lightColor="#6B625C" darkColor="#A8A29E" className="mt-0.5 text-[13px]">{animationsOn ? reducedMotion ? 'Paused by your device’s Reduce Motion setting' : 'Smooth screen transitions and elastic tabs' : 'Instant screens and tab switching'}</ThemeText>
+              </View>
+              <Switch accessibilityLabel="App animations" value={animationsOn} disabled={!motionReady} onValueChange={(value) => { void setAnimations(value).catch(() => showToast('Could not save the animation preference. Please try again.', false)); }} trackColor={{ false: '#8C8580', true: '#F25F45' }} thumbColor="#FFFFFF" />
+            </View>
+            <Divider />
+            <SettingRow
+              icon="document-text-outline"
+              title="Legal"
+              onPress={() => router.push('/legal')}
+              trailing={<Ionicons name="chevron-forward" size={20} color="#A8A29E" />}
+            />
+          </View>
 
-      <LanguageSheet
-        visible={languageOpen}
-        selected={user?.languagePreference ?? 'all'}
-        onSelect={(language) => void selectLanguage(language)}
-        onClose={() => setLanguageOpen(false)}
-      />
-    </SafeAreaView>
+          <View className="mt-6 flex-row items-stretch gap-3">
+            <ThemePressable
+              accessibilityRole="button"
+              onPress={() => router.push('/delete-account')}
+              lightBackground="#FFF7F5" darkBackground="#241B19"
+              lightBorder="#F2DAD5" darkBorder="#49302C"
+              className="min-h-[56px] flex-1 flex-row items-center justify-center gap-2 rounded-[15px] border px-3 py-3 active:opacity-70"
+            >
+              <Ionicons name="trash-outline" size={20} color="#D65348" />
+              <ThemeText lightColor="#B83C32" darkColor="#FF9E94" className="shrink text-center text-[14px] font-bold">Delete account</ThemeText>
+            </ThemePressable>
+
+            <ThemePressable
+              accessibilityRole="button"
+              onPress={() => { setLogoutError(null); setLogoutVisible(true); }}
+              lightBorder="#D9D0C8" darkBorder="#4A4542"
+              className="min-h-[56px] flex-1 flex-row items-center justify-center gap-2 rounded-[15px] border px-3 py-3 active:opacity-70"
+            >
+              <Ionicons name="log-out-outline" size={20} color="#F25F45" />
+              <Text className="shrink text-center text-[14px] font-extrabold text-coral">Logout</Text>
+            </ThemePressable>
+          </View>
+        </ScrollView>
+
+        <ConfirmationModal
+          visible={logoutVisible}
+          title="Log out of HappiNotes?"
+          description="Audio playback will stop. You can sign in again whenever you're ready to listen."
+          icon="log-out-outline"
+          confirmLabel="Log out"
+          cancelLabel="Stay signed in"
+          loading={loggingOut}
+          error={logoutError}
+          onConfirm={() => void signOut()}
+          onCancel={() => setLogoutVisible(false)}
+        />
+        <LanguageSheet
+          visible={languageOpen}
+          selected={user?.languagePreference ?? 'all'}
+          onSelect={(language) => void selectLanguage(language)}
+          onClose={() => setLanguageOpen(false)}
+        />
+      </SafeAreaView>
+    </ThemeView>
   );
 }

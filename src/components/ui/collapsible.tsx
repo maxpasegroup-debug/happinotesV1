@@ -1,3 +1,4 @@
+import { useAppMotion } from '@/providers/motion';
 import { SymbolView } from "expo-symbols";
 import { PropsWithChildren, useState } from "react";
 import { Pressable, StyleSheet } from "react-native";
@@ -12,6 +13,7 @@ export function Collapsible({
   children,
   title,
 }: PropsWithChildren & { title: string }) {
+  const { animationsEnabled } = useAppMotion();
   const [isOpen, setIsOpen] = useState(false);
   const theme = useTheme();
 
@@ -41,7 +43,7 @@ export function Collapsible({
         <ThemedText type="small">{title}</ThemedText>
       </Pressable>
       {isOpen && (
-        <Animated.View entering={FadeIn.duration(200)}>
+        <Animated.View entering={animationsEnabled ? FadeIn.duration(140) : undefined}>
           <ThemedView type="backgroundElement" style={styles.content}>
             {children}
           </ThemedView>

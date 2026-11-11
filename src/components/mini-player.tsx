@@ -1,7 +1,8 @@
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { ThemeText, ThemeView } from '@/components/ui/theme-motion';
 import { usePlayer } from '@/providers/player';
 
 export function MiniPlayer() {
@@ -15,7 +16,7 @@ export function MiniPlayer() {
     'Episode 1';
 
   return (
-    <View className="flex-row items-center border-t border-[#D9D0C8]/60 bg-[#F6F6F6] px-4 py-1 dark:border-[#4A4542]/70 dark:bg-[#242424]">
+    <ThemeView lightBackground="#F6F6F6" darkBackground="#242424" lightBorder="rgba(217,208,200,0.6)" darkBorder="rgba(74,69,66,0.7)" className="flex-row items-center border-t px-4 py-1">
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Open player"
@@ -29,23 +30,23 @@ export function MiniPlayer() {
             style={{ width: 46, height: 46, borderRadius: 10 }}
           />
         ) : (
-          <View className="h-[46px] w-[46px] items-center justify-center rounded-[10px] bg-[#F0EBE8] dark:bg-[#111111]">
+          <ThemeView lightBackground="#F0EBE8" darkBackground="#111111" className="h-[46px] w-[46px] items-center justify-center rounded-[10px]">
             <Ionicons name="musical-notes" size={22} color="#F25F45" />
-          </View>
+          </ThemeView>
         )}
         <View className="ml-3 flex-1">
-          <Text
+          <ThemeText
             numberOfLines={1}
-            className="text-[15px] font-bold text-[#241F1C] dark:text-[#F8F5F0]"
+            lightColor="#241F1C" darkColor="#F8F5F0" className="text-[15px] font-bold"
           >
             {currentBook.title}
-          </Text>
-          <Text
+          </ThemeText>
+          <ThemeText
             numberOfLines={1}
-            className="mt-0.5 text-xs text-[#6B625C] dark:text-[#A8A29E]"
+            lightColor="#6B625C" darkColor="#A8A29E" className="mt-0.5 text-xs"
           >
             {subtitle}
-          </Text>
+          </ThemeText>
         </View>
       </Pressable>
       <Pressable
@@ -61,6 +62,6 @@ export function MiniPlayer() {
           color="#F25F45"
         />
       </Pressable>
-    </View>
+    </ThemeView>
   );
 }

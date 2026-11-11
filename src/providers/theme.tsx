@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { colorScheme } from "nativewind";
@@ -18,6 +19,8 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [dark, setDarkState] = useState(true);
   const [ready, setReady] = useState(false);
+  const selected = useRef(true);
+  const pendingSave = useRef<Promise<void>>(Promise.resolve());
   const applyScheme = useCallback((value: boolean) => {
     try {
       colorScheme.set(value ? "dark" : "light");
@@ -29,6 +32,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const stored = await readPreference("theme_mode").catch(() => null);
       if (!mounted) return;
       const next = stored ? stored === "dark" : true;
+      selected.current = next;
       setDarkState(next);
       applyScheme(next);
       setReady(true);
@@ -39,15 +43,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [applyScheme]);
   const setDark = useCallback(
     async (value: boolean) => {
+      selected.current = value;
       setDarkState(value);
       applyScheme(value);
-      await savePreference("theme_mode", value ? "dark" : "light").catch(
-        () => {},
-      );
+      // Serialize persistence so a slower previous write cannot undo the last tap.
+      pendingSave.current = pendingSave.current
+        .then(() => savePreference("theme_mode", value ? "dark" : "light"))
+        .catch(() => {});
+      await pendingSave.current;
     },
     [applyScheme],
   );
-  const toggle = useCallback(() => setDark(!dark), [dark, setDark]);
+  const toggle = useCallback(() => setDark(!selected.current), [setDark]);
   const value = useMemo(
     () => ({ dark, ready, setDark, toggle }),
     [dark, ready, setDark, toggle],

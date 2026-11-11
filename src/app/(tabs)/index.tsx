@@ -1,8 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  FlatList,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -10,37 +7,43 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useAuth } from '@/providers/auth';
 import { useBooks } from '@/providers/books';
 import { useNotifications } from '@/providers/notifications';
+import { useHappyBites } from '@/providers/happy-bites';
+import { usePlayer } from '@/providers/player';
 import { useToast } from '@/providers/toast';
-import { BookCard, FeaturedCard } from '@/components/ui/book-visuals';
-import { HomeLoadingSkeleton } from '@/components/ui/skeleton';
+import { BookCard, Cover } from '@/components/ui/book-visuals';
+import { HappyBiteCard } from '@/components/happy-bite-card';
+import { SkeletonBox } from '@/components/ui/skeleton';
 import { InlineState, SectionTitle } from '@/components/ui/inline-state';
 import { languageLabel } from '@/lib/format';
-import type { Book } from '@/lib/types';
+import type { Book, HappyBite } from '@/lib/types';
+import { apiErrorMessage } from '@/lib/api';
+import { happyBiteAsBook, HappyBiteAccessError } from '@/lib/happy-bites';
 export default function HomeTab() {
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const {
     books,
     upcoming,
-    library,
     loading,
     error,
     hasLoaded,
     loadBooks,
-    addToCollection,
-    removeFromCollection,
+    library,
+    toggleCollection,
   } = useBooks();
+  const { items: happyBites, loadFirst: loadHappyBites } = useHappyBites();
+  const { playEpisode } = usePlayer();
   const { showToast } = useToast();
+  const [savingBook, setSavingBook] = useState<string | null>(null);
   const { load: loadNotifications } = useNotifications();
   const { width } = useWindowDimensions();
   const [refreshing, setRefreshing] = useState(false);
-  const [railIndex, setRailIndex] = useState(0);
-  const railRef = useRef<FlatList<Book>>(null);
   const preference = user?.languagePreference ?? 'all';
   const [showAllLanguages, setShowAllLanguages] = useState(false);
   const activePreference = showAllLanguages ? 'all' : preference;
@@ -51,12 +54,14 @@ export default function HomeTab() {
     [activePreference],
   );
   const visibleBooks = useMemo(() => books.filter(matches), [books, matches]);
-  const visibleUpcoming = useMemo(
-    () => upcoming.filter(matches),
+  const upcomingBooks = useMemo(
+    () => upcoming.filter((book) => book.status === 'coming_soon' && matches(book)),
     [upcoming, matches],
   );
-  const freeBooks = useMemo(
-    () => visibleBooks.filter((book) => book.accessType === 'free'),
+  const latestBooks = useMemo(
+    () => [...visibleBooks].sort((a, b) =>
+      (Date.parse(b.createdAt ?? '') || 0) - (Date.parse(a.createdAt ?? '') || 0),
+    ).slice(0, 8),
     [visibleBooks],
   );
 
@@ -66,10 +71,12 @@ export default function HomeTab() {
     }
   }, [hasLoaded, loadBooks]);
 
+  useFocusEffect(useCallback(() => { void loadHappyBites('all'); }, [loadHappyBites]));
+
   const refresh = async () => {
     setRefreshing(true);
     try {
-      await loadBooks({ forceRefresh: true });
+      await Promise.all([loadBooks({ forceRefresh: true }), loadHappyBites('all', true)]);
     } finally {
       setRefreshing(false);
     }
@@ -79,33 +86,29 @@ export default function HomeTab() {
     router.push({ pathname: '/book/[id]', params: { id: book.id } });
   };
 
-  const openComingSoon = (book: Book) => {
-    showToast(`${book.title} is coming soon`, true);
-  };
-
   const toggleSaved = async (book: Book) => {
-    const saved = library.some((item) => item.id === book.id);
-    const message = saved
-      ? await removeFromCollection(book)
-      : await addToCollection(book);
-    showToast(
-      message ??
-        (saved ? 'Removed from your library' : 'Added to your library'),
-      message == null,
-    );
+    if (savingBook !== null) return;
+    setSavingBook(book.id);
+    const wasSaved = library.some((item) => item.id === book.id);
+    try {
+      const failure = await toggleCollection(book);
+      showToast(failure ?? (wasSaved ? 'Removed from your library' : 'Saved to your library'), failure == null);
+    } finally {
+      setSavingBook(null);
+    }
   };
 
-  const railWidth = width - 32;
-  const railCardWidth = railWidth * 0.73;
-  const railHeight = Math.min(374, Math.max(300, width * 0.95));
-  const dotCount = Math.min(Math.max(visibleBooks.length, 1), 6);
-
-  const onRailScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const index = Math.round(event.nativeEvent.contentOffset.x / railCardWidth);
-    if (index !== railIndex) setRailIndex(Math.max(0, index));
+  const playHappyBite = async (bite: HappyBite) => {
+    try {
+      const biteBook = happyBiteAsBook(bite);
+      await playEpisode(biteBook, biteBook.episodes[0]);
+      router.push('/player');
+    } catch (error) {
+      if (!(error instanceof HappyBiteAccessError)) showToast(apiErrorMessage(error), false);
+    }
   };
 
-  const renderShelf = (items: Book[], comingSoon = false) => (
+  const renderShelf = (items: Book[]) => (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
@@ -116,17 +119,23 @@ export default function HomeTab() {
         <BookCard
           key={book.id}
           book={book}
-          onPress={() => (comingSoon ? openComingSoon(book) : openBook(book))}
+          onPress={() => openBook(book)}
+          textOpacity={0.8}
+          saved={library.some((item) => item.id === book.id)}
+          saving={savingBook !== null}
+          onToggleSaved={() => void toggleSaved(book)}
         />
       ))}
     </ScrollView>
   );
 
   return (
-    <SafeAreaView edges={['top']} className="flex-1 bg-white dark:bg-[#111111]">
+    <SafeAreaView edges={['top']} className="flex-1 bg-white dark:bg-[#111111]" style={{ minHeight: 0 }}>
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-4 pb-7 pt-3"
+        style={{ minHeight: 0 }}
+        contentContainerClassName="px-4 pt-3"
+        contentContainerStyle={{ paddingBottom: 40 + insets.bottom }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -169,7 +178,7 @@ export default function HomeTab() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Search books and stories"
-          onPress={() => router.push('/search')}
+          onPress={() => router.navigate('/search')}
           className="mt-[18px] h-[52px] flex-row items-center rounded-2xl bg-[#F6F6F6] px-4 active:opacity-80 dark:bg-[#242424]"
         >
           <Ionicons name="search" size={20} color="#A8A29E" />
@@ -178,9 +187,20 @@ export default function HomeTab() {
           </Text>
         </Pressable>
 
-        <View className="mt-[22px]">
+        <View className="mt-6">
+          <View className="mb-4 flex-row items-center justify-between">
+            <View className="flex-1">
+              <SectionTitle>Audiobooks</SectionTitle>
+              <Text className="mt-1 text-[13px] text-[#6B625C] dark:text-[#A8A29E]">The newest additions to your listening list.</Text>
+            </View>
+            <Pressable accessibilityRole="button" accessibilityLabel="See all audiobooks" onPress={() => router.navigate('/search')} className="py-3 pl-3">
+              <Text className="text-sm font-extrabold text-coral">See all</Text>
+            </Pressable>
+          </View>
           {!hasLoaded || loading ? (
-            <HomeLoadingSkeleton />
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-4">
+              {[0, 1, 2].map((item) => <View key={item} className="gap-2"><SkeletonBox width={140} height={194} radius={12} /><SkeletonBox width={120} height={14} /></View>)}
+            </ScrollView>
           ) : error ? (
             <InlineState
               icon="cloud-offline-outline"
@@ -189,8 +209,8 @@ export default function HomeTab() {
               actionLabel="Try again"
               onAction={() => void loadBooks({ forceRefresh: true })}
             />
-          ) : visibleBooks.length === 0 && visibleUpcoming.length === 0 ? (
-            books.length + upcoming.length > 0 ? (
+          ) : visibleBooks.length === 0 ? (
+            books.length > 0 ? (
               <InlineState
                 icon="language-outline"
                 title="No stories in this language yet"
@@ -210,77 +230,55 @@ export default function HomeTab() {
               />
             )
           ) : (
-            <>
-              {visibleBooks.length > 0 ? (
-                <>
-                  <View>
-                    <FlatList
-                      ref={railRef}
-                      data={visibleBooks}
-                      keyExtractor={(item) => item.id}
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      snapToInterval={railCardWidth}
-                      decelerationRate="fast"
-                      onScroll={onRailScroll}
-                      scrollEventThrottle={16}
-                      renderItem={({ item }) => (
-                        <View style={{ width: railCardWidth, height: railHeight }}>
-                          <View className="flex-1 px-2.5">
-                            <FeaturedCard
-                              book={item}
-                              width={railCardWidth - 20}
-                              height={railHeight}
-                              saved={library.some((book) => book.id === item.id)}
-                              onPress={() => openBook(item)}
-                              onToggleSaved={() => void toggleSaved(item)}
-                            />
-                          </View>
-                        </View>
-                      )}
-                    />
-                  </View>
-                  <View className="mt-3 flex-row justify-center">
-                    {Array.from({ length: dotCount }, (_, dot) => {
-                      const active =
-                        dot === Math.min(Math.max(railIndex, 0), dotCount - 1);
-                      return (
-                        <View
-                          key={dot}
-                          className={`mx-1 h-2 rounded-full ${
-                            active
-                              ? 'w-[42px] bg-coral'
-                              : 'w-2 bg-[#D9D0C8] dark:bg-[#4A4542]'
-                          }`}
-                        />
-                      );
-                    })}
-                  </View>
-
-                  <View className="mt-7">
-                    <SectionTitle>Recently added</SectionTitle>
-                    {renderShelf(visibleBooks)}
-                  </View>
-
-                  <View className="mt-6">
-                    <SectionTitle>Free to listen</SectionTitle>
-                    {renderShelf(freeBooks)}
-                  </View>
-                </>
-              ) : null}
-
-              {visibleUpcoming.length > 0 ? (
-                <View className="mt-6">
-                  <SectionTitle>Coming soon</SectionTitle>
-                  <Text className="mt-1.5 text-[15px] text-[#A8A29E]">
-                    New audiobooks being prepared for release.
-                  </Text>
-                  {renderShelf(visibleUpcoming, true)}
-                </View>
-              ) : null}
-            </>
+            renderShelf(latestBooks)
           )}
         </View>
+        <View className="mt-7">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1">
+              <SectionTitle>Happy Bites</SectionTitle>
+              <Text className="mt-1 text-[13px] text-[#6B625C] dark:text-[#A8A29E]">Small thoughts. Meaningful changes.</Text>
+            </View>
+            <Pressable accessibilityRole="button" accessibilityLabel="See all Happy Bites" onPress={() => router.navigate('/(tabs)/happy-bites')} className="py-3 pl-3">
+              <Text className="text-sm font-extrabold text-coral">See all</Text>
+            </Pressable>
+          </View>
+          {happyBites.length > 0 ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3" className="mt-3">
+              {happyBites.slice(0, 8).map((bite) => <HappyBiteCard key={bite.id} bite={bite} width={Math.min(248, width - 64)} onPress={() => void playHappyBite(bite)} />)}
+            </ScrollView>
+          ) : (
+            <View className="mt-3 flex-row items-center rounded-2xl border border-coral/20 bg-[#FFF3EF] p-5 dark:bg-[#291C18]">
+              <View className="mr-4 h-12 w-12 items-center justify-center rounded-full bg-coral/15"><Ionicons name="sparkles-outline" size={25} color="#F25F45" /></View>
+              <View className="flex-1">
+                <Text className="font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">A little inspiration is on its way</Text>
+                <Text className="mt-1 text-sm leading-5 text-[#6B625C] dark:text-[#A8A29E]">Free audio bites, about a minute each. New thoughts will appear here.</Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {upcomingBooks.length > 0 ? (
+          <View className="mt-7">
+            <SectionTitle>Coming Soon</SectionTitle>
+            <Text className="mt-1 text-[13px] text-[#6B625C] dark:text-[#A8A29E]">A little preview of what’s on the way.</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-4" className="mt-3">
+              {upcomingBooks.map((book) => (
+                <View key={book.id} style={{ width: 140 }} accessible accessibilityLabel={`${book.title}, coming soon`}>
+                  <View className="h-[194px] overflow-hidden rounded-xl">
+                    <Cover book={book} className="h-full w-full" />
+                    <View className="absolute bottom-2 left-2 right-2 flex-row items-center justify-center gap-1 rounded-lg bg-black/70 px-2 py-1.5">
+                      <Ionicons name="time-outline" size={13} color="#FFFFFF" />
+                      <Text className="text-[10px] font-extrabold uppercase tracking-wide text-white">Coming soon</Text>
+                    </View>
+                  </View>
+                  <Text numberOfLines={2} className="mt-2 text-sm font-bold leading-[17px] text-[#241F1C]/80 dark:text-[#F8F5F0]/80">{book.title}</Text>
+                  {book.language ? <Text className="mt-1 text-[11px] text-[#6B625C] dark:text-[#A8A29E]">{languageLabel(book.language)}</Text> : null}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );

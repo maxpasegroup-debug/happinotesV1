@@ -5,8 +5,29 @@ export type BookEpisode = {
   order: number;
 };
 
+export type HappyBite = {
+  id: string;
+  title: string;
+  description: string;
+  thumbnailUrl: string;
+  audioUrl: string;
+  durationSeconds: number;
+  accessType: 'free' | 'premium';
+  locked: boolean;
+  category: string;
+  published: boolean;
+  displayOrder: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type HappyBiteDraft = Omit<HappyBite, 'id' | 'createdAt' | 'updatedAt' | 'locked'> & {
+  id?: string;
+};
+
 export type Book = {
   id: string;
+  happyBiteId?: string;
   title: string;
   description: string;
   language: string;
@@ -18,6 +39,7 @@ export type Book = {
   status: string;
   duration: number;
   episodes: BookEpisode[];
+  createdAt?: string;
 };
 
 export type User = {
