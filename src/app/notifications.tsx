@@ -1,3 +1,4 @@
+import { useAppLanguage } from '@/providers/app-language';
 import { useAppMotion } from '@/providers/motion';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -33,6 +34,7 @@ function NotificationTile({
   notification: AppNotification;
   onPress?: () => void;
 }) {
+  const { t } = useAppLanguage();
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
@@ -61,7 +63,7 @@ function NotificationTile({
           {notification.message}
         </Text>
         <Text className="mt-1 text-[12px] text-[#6B625C] dark:text-[#A8A29E]">
-          {notificationAge(notification.createdAt)}
+          {notificationAge(notification.createdAt, t)}
         </Text>
       </View>
     </Pressable>
@@ -69,6 +71,7 @@ function NotificationTile({
 }
 
 export default function NotificationsScreen() {
+  const { t } = useAppLanguage();
   const { animationsEnabled } = useAppMotion();
   const { items, loading, error, load } = useNotifications();
   const { resolveBook } = useBooks();
@@ -114,7 +117,7 @@ export default function NotificationsScreen() {
     <View className="flex-1 justify-end bg-black/40">
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Close notifications"
+        accessibilityLabel={t("Close notifications")}
         className="flex-1"
         onPress={() => router.back()}
       />
@@ -131,8 +134,7 @@ export default function NotificationsScreen() {
           className="-mx-5 -mt-3 px-5 pt-3 pb-1"
         >
           <View className="h-1 w-10 self-center rounded-full bg-[#A8A29E]" />
-          <Text className="mt-4 text-[22px] font-black text-[#241F1C] dark:text-[#F8F5F0]">
-            Notifications
+          <Text className="mt-4 text-[22px] font-black text-[#241F1C] dark:text-[#F8F5F0]">{t("Notifications")}
           </Text>
         </View>
         <ScrollView
@@ -147,7 +149,7 @@ export default function NotificationsScreen() {
           ) : items.length === 0 ? (
             <View className="items-center py-12">
               <Text className="text-center text-[15px] text-[#A8A29E]">
-                {error ?? 'No notifications yet.'}
+                {error ?? t("No notifications yet.")}
               </Text>
             </View>
           ) : (

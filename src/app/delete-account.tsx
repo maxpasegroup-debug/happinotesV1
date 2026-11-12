@@ -1,3 +1,4 @@
+import { useAppLanguage } from '@/providers/app-language';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -84,6 +85,7 @@ function DeletionDetail({ icon, title, description }: {
 }
 
 export default function DeleteAccountScreen() {
+  const { t } = useAppLanguage();
   const {
     logout,
     requestDeletionReauth,
@@ -203,14 +205,14 @@ export default function DeleteAccountScreen() {
           await expireSession();
         } else {
           setDialog(null);
-          setError(`${apiErrorMessage(exception)} If the request was accepted, use Check status before trying again.`);
+          setError(t('{{error}} If the request was accepted, use Check status before trying again.', { error: apiErrorMessage(exception) }));
         }
       } finally {
         operationInFlight.current = false;
         setLoading(false);
       }
     },
-    [expireSession, handleCompleted, requestAccountDeletion, showToast],
+    [expireSession, handleCompleted, requestAccountDeletion, showToast, t],
   );
 
   const startDeletion = () => {
@@ -269,28 +271,27 @@ export default function DeleteAccountScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-[#111111]">
-      <ScreenHeader title="Delete account" onBack={() => router.back()} />
+      <ScreenHeader title={t("Delete account")} onBack={() => router.back()} />
       <ScrollView contentContainerClassName="px-5 pb-8 pt-4">
         <View className="items-center pb-6">
           <View className="h-[72px] w-[72px] items-center justify-center rounded-[24px] bg-[#FDECE9] dark:bg-[#382321]">
             <Ionicons name="trash-outline" size={30} color="#D65348" />
           </View>
-          <Text className="mt-4 text-center text-[24px] font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">Your account, your choice</Text>
-          <Text className="mt-2 max-w-[320px] text-center text-[14px] leading-[22px] text-[#6B625C] dark:text-[#A8A29E]">
-            Take a moment to review what happens before you request deletion.
+          <Text className="mt-4 text-center text-[24px] font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">{t("Your account, your choice")}</Text>
+          <Text className="mt-2 max-w-[320px] text-center text-[14px] leading-[22px] text-[#6B625C] dark:text-[#A8A29E]">{t("Take a moment to review what happens before you request deletion.")}
           </Text>
         </View>
 
         <View className="rounded-[22px] bg-[#F8F6F4] p-5 dark:bg-[#1B1B1B]">
-          <Text className="mb-4 text-[16px] font-bold text-[#241F1C] dark:text-[#F8F5F0]">Before you continue</Text>
-          <DeletionDetail icon="lock-closed-outline" title="Account access ends" description="Your profile, saved preferences and access to purchased books and Premium are removed during processing." />
-          <DeletionDetail icon="card-outline" title="Manage store subscriptions separately" description="Deleting your account does not cancel Google Play or App Store billing. Manage or cancel your subscription in the store." />
-          <DeletionDetail icon="time-outline" title="Deletion may take time" description="Some records need further review. A request may pause before deletion is complete. You can check its status here." />
+          <Text className="mb-4 text-[16px] font-bold text-[#241F1C] dark:text-[#F8F5F0]">{t("Before you continue")}</Text>
+          <DeletionDetail icon="lock-closed-outline" title={t("Account access ends")} description={t("Your profile, saved preferences and access to purchased books and Premium are removed during processing.")} />
+          <DeletionDetail icon="card-outline" title={t("Manage store subscriptions separately")} description={t("Deleting your account does not cancel Google Play or App Store billing. Manage or cancel your subscription in the store.")} />
+          <DeletionDetail icon="time-outline" title={t("Deletion may take time")} description={t("Some records need further review. A request may pause before deletion is complete. You can check its status here.")} />
         </View>
 
         {error ? (
           <Text className="mt-3 text-center text-[14px] text-[#C62828]">
-            {error}
+            {t(error)}
           </Text>
         ) : null}
 
@@ -310,15 +311,14 @@ export default function DeleteAccountScreen() {
                   color={warning ? '#B45309' : '#16803C'}
                 />
                 <Text className="ml-2.5 flex-1 text-[16px] font-bold text-[#241F1C] dark:text-[#F8F5F0]">
-                  {statusTitle(status.status)}
+                  {t(statusTitle(status.status))}
                 </Text>
               </View>
               <Text className="mt-2.5 text-[14px] leading-[21px] text-[#241F1C] dark:text-[#F8F5F0]">
-                {statusBody(status.status)}
+                {t(statusBody(status.status))}
               </Text>
               {status.reference ? (
-                <Text selectable className="mt-2.5 text-[14px] text-[#241F1C] dark:text-[#F8F5F0]">
-                  Request reference: {status.reference}
+                <Text selectable className="mt-2.5 text-[14px] text-[#241F1C] dark:text-[#F8F5F0]">{t("Request reference:")} {status.reference}
                 </Text>
               ) : null}
               <Pressable
@@ -328,8 +328,7 @@ export default function DeleteAccountScreen() {
                 className="mt-2.5 flex-row items-center self-end rounded-lg px-2 py-2 active:bg-black/5 dark:active:bg-white/10"
               >
                 <Ionicons name="refresh" size={18} color="#F25F45" />
-                <Text className="ml-1.5 font-bold text-coral">
-                  Refresh status
+                <Text className="ml-1.5 font-bold text-coral">{t("Refresh status")}
                 </Text>
               </Pressable>
             </View>
@@ -351,10 +350,10 @@ export default function DeleteAccountScreen() {
               )}
               <Text className="text-[15px] font-extrabold text-white">
                 {loading
-                  ? 'Working…'
+                  ? t("Working…")
                   : proof && idempotencyKey
-                    ? 'Retry deletion request'
-                    : 'Start account deletion'}
+                    ? t("Retry deletion request")
+                    : t("Start account deletion")}
               </Text>
             </Pressable>
           )}
@@ -367,30 +366,23 @@ export default function DeleteAccountScreen() {
             onPress={() => void retryRequest()}
             className="mt-3 min-h-[50px] items-center justify-center rounded-[15px] border border-[#D9D0C8] px-5 active:opacity-70 dark:border-[#4A4542]"
           >
-            <Text className="text-[15px] font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">
-              Retry request
+            <Text className="text-[15px] font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">{t("Retry request")}
             </Text>
           </Pressable>
         ) : null}
 
         {status?.reference && status?.statusToken ? (
           <View className="mt-3 rounded-[14px] border border-[#D9D0C8]/50 p-4 dark:border-[#4A4542]">
-            <Text className="text-[16px] font-bold text-[#241F1C] dark:text-[#F8F5F0]">
-              Save your status details
+            <Text className="text-[16px] font-bold text-[#241F1C] dark:text-[#F8F5F0]">{t("Save your status details")}
             </Text>
-            <Text className="mt-2 text-[14px] leading-[21px] text-[#241F1C] dark:text-[#F8F5F0]">
-              Use these details on the public account-deletion page if this app
-              session ends. Keep the status code private. It cannot be reissued
-              after your contact details are erased.
+            <Text className="mt-2 text-[14px] leading-[21px] text-[#241F1C] dark:text-[#F8F5F0]">{t("Use these details on the public account-deletion page if this app session ends. Keep the status code private. It cannot be reissued after your contact details are erased.")}
             </Text>
-            <Text className="mt-2 text-[14px] text-[#241F1C] dark:text-[#F8F5F0]">
-              Request reference
+            <Text className="mt-2 text-[14px] text-[#241F1C] dark:text-[#F8F5F0]">{t("Request reference")}
             </Text>
             <Text selectable className="text-[14px] text-[#241F1C] dark:text-[#F8F5F0]">
               {status.reference}
             </Text>
-            <Text className="mt-2 text-[14px] text-[#241F1C] dark:text-[#F8F5F0]">
-              Private status code
+            <Text className="mt-2 text-[14px] text-[#241F1C] dark:text-[#F8F5F0]">{t("Private status code")}
             </Text>
             <Text selectable className="text-[14px] text-[#241F1C] dark:text-[#F8F5F0]">
               {status.statusToken}
@@ -400,8 +392,7 @@ export default function DeleteAccountScreen() {
 
         <View className="mt-5 flex-row items-start px-1">
           <Ionicons name="shield-checkmark-outline" size={17} color="#A8A29E" />
-          <Text className="ml-2 flex-1 text-[12px] leading-[19px] text-[#6B625C] dark:text-[#A8A29E]">
-            We’ll verify your password or PIN first. Save your request reference and private status code after submitting; recovery may be unavailable once contact details are removed.
+          <Text className="ml-2 flex-1 text-[12px] leading-[19px] text-[#6B625C] dark:text-[#A8A29E]">{t("We’ll verify your password or PIN first. Save your request reference and private status code after submitting; recovery may be unavailable once contact details are removed.")}
           </Text>
         </View>
 
@@ -412,23 +403,23 @@ export default function DeleteAccountScreen() {
           className="mt-3.5 flex-row items-center justify-center gap-2 py-3 active:opacity-70"
         >
           <Ionicons name="refresh" size={19} color="#F25F45" />
-          <Text className="font-bold text-coral">Check status</Text>
+          <Text className="font-bold text-coral">{t("Check status")}</Text>
         </Pressable>
       </ScrollView>
 
       <ConfirmationModal
         visible={dialog !== null}
-        title={dialog === 'completed' ? 'Account deletion completed' : dialog === 'reauth' ? 'Confirm your identity' : dialog === 'final' ? 'Delete your account?' : 'Ready to continue?'}
+        title={dialog === 'completed' ? t("Account deletion completed") : dialog === 'reauth' ? t("Confirm your identity") : dialog === 'final' ? t("Delete your account?") : t("Ready to continue?")}
         description={dialog === 'completed'
           ? `Your deletion is complete. Save this reference for support: ${status?.reference ?? 'not available'}. Continuing will sign you out.`
           : dialog === 'reauth'
-            ? 'Enter your password or PIN to protect your account. No deletion request is sent at this step.'
+            ? t("Enter your password or PIN to protect your account. No deletion request is sent at this step.")
             : dialog === 'final'
-              ? 'This sends your deletion request and blocks account access. It cannot be undone once processing begins. Your store subscription will not be cancelled.'
-              : 'You’ll verify your identity, then confirm deletion. Your profile and saved content will be removed during processing. Some purchase, subscription and other records may be retained while your request is reviewed.'}
+              ? t("This sends your deletion request and blocks account access. It cannot be undone once processing begins. Your store subscription will not be cancelled.")
+              : t("You’ll verify your identity, then confirm deletion. Your profile and saved content will be removed during processing. Some purchase, subscription and other records may be retained while your request is reviewed.")}
         icon={dialog === 'completed' ? 'checkmark-circle-outline' : dialog === 'reauth' ? 'lock-closed-outline' : 'trash-outline'}
-        confirmLabel={dialog === 'completed' ? 'Continue to sign in' : dialog === 'reauth' ? 'Verify identity' : dialog === 'final' ? 'Delete account' : 'Continue'}
-        cancelLabel={dialog === 'reauth' ? 'Cancel' : 'Keep my account'}
+        confirmLabel={dialog === 'completed' ? t("Continue to sign in") : dialog === 'reauth' ? t("Verify identity") : dialog === 'final' ? t("Delete account") : t("Continue")}
+        cancelLabel={dialog === 'reauth' ? t("Cancel") : t("Keep my account")}
         destructive={dialog === 'intro' || dialog === 'final'}
         loading={loading}
         disabled={dialog === 'reauth' && credential.length < 6}
@@ -443,7 +434,7 @@ export default function DeleteAccountScreen() {
       >
         {dialog === 'reauth' ? (
           <Field
-            label="Password or PIN"
+            label={t("Password or PIN")}
             value={credential}
             onChangeText={setCredential}
             secureTextEntry
@@ -457,7 +448,7 @@ export default function DeleteAccountScreen() {
         ) : null}
         {dialog === 'intro' ? (
           <View className="rounded-2xl bg-[#F8F6F4] p-4 dark:bg-[#262321]">
-            <Text className="text-[13px] leading-5 text-[#6B625C] dark:text-[#B8B0AA]">Google Play and App Store subscriptions must be managed or cancelled separately in the store.</Text>
+            <Text className="text-[13px] leading-5 text-[#6B625C] dark:text-[#B8B0AA]">{t("Google Play and App Store subscriptions must be managed or cancelled separately in the store.")}</Text>
           </View>
         ) : null}
       </ConfirmationModal>

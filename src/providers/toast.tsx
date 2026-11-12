@@ -1,3 +1,4 @@
+import { useAppLanguage } from '@/providers/app-language';
 import { useAppMotion } from '@/providers/motion';
 import {
   createContext,
@@ -26,6 +27,7 @@ type ToastContextValue = {
 const ToastContext = createContext<ToastContextValue | null>(null);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useAppLanguage();
   const { animationsEnabled } = useAppMotion();
   const motion = useRef(animationsEnabled);
   const [toast, setToast] = useState<ToastState | null>(null);
@@ -126,7 +128,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 flex: 1,
               }}
             >
-              {toast.message}
+              {t(toast.message)}
             </Text>
           </View>
         </Animated.View>

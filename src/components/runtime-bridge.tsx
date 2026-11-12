@@ -1,25 +1,14 @@
 import { useEffect, useRef } from "react";
 import { AppState, Platform } from "react-native";
 import { router } from "expo-router";
-import * as Notifications from "expo-notifications";
-import { AndroidImportance } from "expo-notifications";
 import { io, type Socket } from "socket.io-client";
 import { API_ORIGIN, API_SOCKET_PATH, request } from "@/lib/api";
-import { PUSH_NOTIFICATIONS_SUPPORTED } from "@/lib/app-environment";
+import { loadPushNotifications } from "@/lib/push-notifications";
 import { useAuth } from "@/providers/auth";
 import { useAdmin } from "@/providers/admin";
 import { useBooks } from "@/providers/books";
 import { useNotifications } from "@/providers/notifications";
 import { useSubscription } from "@/providers/subscription";
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-    shouldShowBanner: false,
-    shouldShowList: false,
-  }),
-});
 
 function RealtimeBridge() {
   const { user } = useAuth();
@@ -98,7 +87,7 @@ function PushBridge() {
     let active = true;
 
     const registerToken = async (token: string) => {
-      if (!token) return;
+      if (!active || !token) return;
       try {
         await request("/auth/me/fcm-token", {
           method: "POST",
@@ -114,52 +103,56 @@ function PushBridge() {
       router.push({ pathname: "/book/[id]", params: { id: bookId } });
     };
     const subscriptions: { remove: () => void }[] = [];
-    try {
-      subscriptions.push(
-        Notifications.addNotificationResponseReceivedListener((response) => {
-          void openBook(
-            response.notification.request.content.data as Record<
-              string,
-              unknown
-            >,
-          );
-        }),
-      );
+    let notifications: Awaited<ReturnType<typeof loadPushNotifications>> = null;
+    void (async () => {
+      const Notifications = await loadPushNotifications();
+      if (!active || !Notifications) return;
+      notifications = Notifications;
+      try {
+        Notifications.setNotificationHandler({
+          handleNotification: async () => ({
+            shouldPlaySound: false,
+            shouldSetBadge: false,
+            shouldShowBanner: false,
+            shouldShowList: false,
+          }),
+        });
+        subscriptions.push(
+          Notifications.addNotificationResponseReceivedListener((response) => {
+            void openBook(
+              response.notification.request.content.data as Record<
+                string,
+                unknown
+              >,
+            );
+          }),
+        );
 
-      subscriptions.push(
-        Notifications.addNotificationReceivedListener(() => {
-          void load(true);
-        }),
-      );
-      if (PUSH_NOTIFICATIONS_SUPPORTED) {
+        subscriptions.push(
+          Notifications.addNotificationReceivedListener(() => {
+            void load(true);
+          }),
+        );
         subscriptions.push(
           Notifications.addPushTokenListener((token) => {
             const value = String(token.data ?? "");
             if (value) void registerToken(value);
           }),
         );
-      }
-    } catch (error) {
-      if (__DEV__) {
-        console.warn("[push] notification listeners unavailable", error);
-      }
-    }
-
-    void (async () => {
-      try {
         if (Platform.OS === "android") {
           await Notifications.setNotificationChannelAsync("default", {
             name: "HappiNotes",
-            importance: AndroidImportance.DEFAULT,
+            importance: Notifications.AndroidImportance.DEFAULT,
           });
         }
-        if (!PUSH_NOTIFICATIONS_SUPPORTED) return;
+        if (!active) return;
         const permission = await Notifications.requestPermissionsAsync();
         if (!active) return;
         if (permission.granted) {
           const token = await Notifications.getDevicePushTokenAsync();
           await registerToken(String(token.data));
         }
+        if (!active) return;
         const initial = await Notifications.getLastNotificationResponseAsync();
         if (active && initial) {
           await openBook(
@@ -178,6 +171,7 @@ function PushBridge() {
           subscription.remove();
         } catch {}
       }
+      notifications?.setNotificationHandler(null);
     };
   }, [load, user]);
   return null;

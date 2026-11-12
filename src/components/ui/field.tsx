@@ -1,3 +1,4 @@
+import { useAppLanguage } from '@/providers/app-language';
 import { useRef, useState, type ComponentRef } from "react";
 import {
   Pressable,
@@ -47,6 +48,7 @@ export function Field({
   returnKeyType,
   onSubmitEditing,
 }: FieldProps) {
+  const { t } = useAppLanguage();
   const { colorScheme } = useColorScheme();
   const [revealed, setRevealed] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -55,7 +57,7 @@ export function Field({
   return (
     <View className="mb-3.5">
       <Text className="mb-2 text-xs font-bold uppercase tracking-wide text-[#6B625C] dark:text-[#A8A29E]">
-        {label}
+        {t(label)}
       </Text>
       <View
         className={`flex-row items-center rounded-[14px] border bg-[#F6F6F6] px-3.5 dark:bg-[#242424] ${
@@ -79,7 +81,7 @@ export function Field({
           onChangeText={onChangeText}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          placeholder={placeholder}
+          placeholder={placeholder ? t(placeholder) : undefined}
           placeholderTextColor={colorScheme === "dark" ? "#A8A29E" : "#8B827C"}
           secureTextEntry={secureTextEntry && hidden}
           keyboardType={keyboardType}
@@ -99,7 +101,7 @@ export function Field({
         {secureTextEntry ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={hidden ? "Show password" : "Hide password"}
+            accessibilityLabel={hidden ? t("Show password") : t("Hide password")}
             hitSlop={8}
             onPress={() => setRevealed((current) => !current)}
             className="ml-2 p-1"
@@ -114,7 +116,7 @@ export function Field({
       </View>
       {error ? (
         <Text className="mt-1.5 text-[12px] font-semibold text-[#C62828]">
-          {error}
+          {t(error)}
         </Text>
       ) : null}
     </View>
@@ -211,17 +213,18 @@ export function ChoiceField({
   options: string[];
   onChange: (value: string) => void;
 }) {
+  const { t } = useAppLanguage();
   return (
     <View className="mb-3.5">
       <Text className="mb-2 text-xs font-bold uppercase tracking-wide text-[#6B625C] dark:text-[#A8A29E]">
-        {label}
+        {t(label)}
       </Text>
       <View className="flex-row flex-wrap gap-2">
         {options.map((option) => {
           const selected = value === option;
           return (
             <Pressable
-              key={option}
+              key={t(option)}
               accessibilityRole="button"
               accessibilityState={{ selected }}
               onPress={() => onChange(option)}
@@ -236,7 +239,7 @@ export function ChoiceField({
                   selected ? "text-white" : "text-[#514944] dark:text-[#D0C8C2]"
                 }`}
               >
-                {option}
+                {t(option)}
               </Text>
             </Pressable>
           );

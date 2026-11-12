@@ -1,3 +1,4 @@
+import { useAppLanguage } from '@/providers/app-language';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -41,6 +42,7 @@ const LINKS: {
 ];
 
 export default function LegalScreen() {
+  const { t } = useAppLanguage();
   const { showToast } = useToast();
 
   const open = async (path: string) => {
@@ -53,19 +55,13 @@ export default function LegalScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-[#111111]">
-      <ScreenHeader title="Legal" onBack={() => router.back()} />
+      <ScreenHeader title={t("Legal")} onBack={() => router.back()} />
       <ScrollView contentContainerClassName="px-5 pb-8 pt-2">
-        <Text className="text-[13px] leading-[20px] text-[#A8A29E]">
-          HappiNotes is owned and operated by AIRASKILL CITY PRIVATE LIMITED.
-          {'\n'}
-          Registered office: 2619, T2, 6th Floor, HiLITE Business Park, HiLITE
-          City, near Guruvayurappan College, Kozhikode – 673014, Kerala, India.
-          {'\n'}
-          Customer support and privacy: hello@happinotes.online · +91 8089239823
+        <Text className="text-[13px] leading-[20px] text-[#A8A29E]">{t("HappiNotes is owned and operated by AIRASKILL CITY PRIVATE LIMITED.")}
+          {'\n'}{t("Registered office: 2619, T2, 6th Floor, HiLITE Business Park, HiLITE City, near Guruvayurappan College, Kozhikode – 673014, Kerala, India.")}
+          {'\n'}{t("Customer support and privacy: hello@happinotes.online · +91 8089239823")}
         </Text>
-        <Text className="mt-2.5 text-[13px] leading-[20px] text-[#A8A29E]">
-          These policy pages are drafts awaiting owner and legal review. Do not
-          treat them as final terms until the published versions are approved.
+        <Text className="mt-2.5 text-[13px] leading-[20px] text-[#A8A29E]">{t("These policy pages are drafts awaiting owner and legal review. Do not treat them as final terms until the published versions are approved.")}
         </Text>
 
         <View className="mt-5">
@@ -78,7 +74,7 @@ export default function LegalScreen() {
             >
               <Ionicons name={link.icon} size={22} color="#A8A29E" />
               <Text className="ml-4 flex-1 text-[16px] text-[#241F1C] dark:text-[#F8F5F0]">
-                {link.title}
+                {t(link.title)}
               </Text>
               <Ionicons name="open-outline" size={18} color="#A8A29E" />
             </Pressable>

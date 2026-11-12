@@ -1,3 +1,4 @@
+import { useAppLanguage } from '@/providers/app-language';
 import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -18,6 +19,7 @@ import { apiErrorMessage } from '@/lib/api';
 type AuthStep = 'email' | 'otp' | 'password';
 
 export default function AuthScreen() {
+  const { t } = useAppLanguage();
   const {
     user,
     requestEmailOtp,
@@ -146,7 +148,7 @@ export default function AuthScreen() {
   const resendOtp = async () => {
     if (!isSignup || step !== 'otp' || loading) return;
     if (resendSeconds > 0) {
-      setError(`Please wait ${resendSeconds} seconds before requesting another code.`);
+      setError(t('Please wait {{seconds}} seconds before requesting another code.', { seconds: resendSeconds }));
       return;
     }
     setLoading(true);
@@ -188,13 +190,13 @@ export default function AuthScreen() {
               style={{ height: 140, width: '100%' }}
             />
             <Text className="text-center text-[26px] font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">
-              {heading}
+              {t(heading)}
             </Text>
             <View className="mt-7" />
 
             {step === 'email' ? (
               <Field
-                label="Email address"
+                label={t("Email address")}
                 value={email}
                 onChangeText={(value) => {
                   setEmail(value.trim());
@@ -216,8 +218,7 @@ export default function AuthScreen() {
 
             {step === 'otp' ? (
               <View>
-                <Text className="mb-3.5 text-center text-[15px] text-[#241F1C] dark:text-[#F8F5F0]">
-                  We sent a 6-digit code to {email}
+                <Text className="mb-3.5 text-center text-[15px] text-[#241F1C] dark:text-[#F8F5F0]">{t('We sent a 6-digit code to {{email}}', { email })}
                 </Text>
                 <OtpBoxes
                   value={otp}
@@ -228,8 +229,8 @@ export default function AuthScreen() {
                 <TextAction
                   label={
                     resendSeconds > 0
-                      ? `Resend code in ${resendSeconds}s`
-                      : 'Resend code'
+                      ? t('Resend code in {{seconds}}s', { seconds: resendSeconds })
+                      : t("Resend code")
                   }
                   disabled={loading || resendSeconds > 0}
                   onPress={() => void resendOtp()}
@@ -241,13 +242,12 @@ export default function AuthScreen() {
             {step === 'password' ? (
               <View>
                 {!isSignup ? (
-                  <Text className="mb-3.5 text-center text-[15px] text-[#241F1C] dark:text-[#F8F5F0]">
-                    Signing in as {email}
+                  <Text className="mb-3.5 text-center text-[15px] text-[#241F1C] dark:text-[#F8F5F0]">{t('Signing in as {{email}}', { email })}
                   </Text>
                 ) : null}
                 {isSignup ? (
                   <Field
-                    label="Full name"
+                    label={t("Full name")}
                     value={name}
                     onChangeText={setName}
                     autoCapitalize="words"
@@ -255,7 +255,7 @@ export default function AuthScreen() {
                   />
                 ) : null}
                 <Field
-                  label="Password"
+                  label={t("Password")}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry
@@ -265,7 +265,7 @@ export default function AuthScreen() {
                 />
                 {isSignup ? (
                   <Field
-                    label="Confirm password"
+                    label={t("Confirm password")}
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     secureTextEntry
@@ -277,7 +277,7 @@ export default function AuthScreen() {
 
             {error ? (
               <Text className="mt-1 text-center text-sm text-red-500">
-                {error}
+                {t(error)}
               </Text>
             ) : null}
 
@@ -285,12 +285,12 @@ export default function AuthScreen() {
               <ActionButton
                 label={
                   step === 'email'
-                    ? 'Continue'
+                    ? t("Continue")
                     : step === 'otp'
-                      ? 'Verify email'
+                      ? t("Verify email")
                       : isSignup
-                        ? 'Create account'
-                        : 'Sign in'
+                        ? t("Create account")
+                        : t("Sign in")
                 }
                 onPress={() => void submit()}
                 loading={loading}
@@ -300,7 +300,7 @@ export default function AuthScreen() {
 
             {step !== 'email' ? (
               <TextAction
-                label="Change email"
+                label={t("Change email")}
                 disabled={loading}
                 onPress={changeEmail}
               />
@@ -309,15 +309,15 @@ export default function AuthScreen() {
                 <TextAction
                   label={
                     isSignup
-                      ? 'Already have an account? Sign in'
-                      : 'New to HappiNotes? Create account'
+                      ? t("Already have an account? Sign in")
+                      : t("New to HappiNotes? Create account")
                   }
                   disabled={loading}
                   onPress={toggleMode}
                 />
                 {!isSignup ? (
                   <TextAction
-                    label="Forgot password?"
+                    label={t("Forgot password?")}
                     disabled={loading}
                     onPress={() => router.push('/forgot-password')}
                   />

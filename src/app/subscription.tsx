@@ -1,3 +1,4 @@
+import { useAppLanguage } from '@/providers/app-language';
 import { Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,6 +9,7 @@ import { ActionButton, TextAction } from "@/components/ui/action-button";
 import { dateOnly } from "@/lib/format";
 
 export default function SubscriptionScreen() {
+  const { t } = useAppLanguage();
   const { prompt } = useLocalSearchParams<{ prompt?: string }>();
   const showClose = prompt === "1";
   const { user } = useAuth();
@@ -31,21 +33,22 @@ export default function SubscriptionScreen() {
   const expiry = dateOnly(user?.subscriptionExpiresAt);
   const planLabel = user?.subscriptionPlan === "yearly" ? "yearly" : "monthly";
 
+  const translatedPlan = t(planLabel === 'yearly' ? 'Yearly' : 'Monthly');
   let activeCopy: string;
   if (user?.subscriptionAutoRenewing === false) {
-    activeCopy = `Auto-renew is off. Premium access continues until ${
-      expiry || "the current period ends"
-    }. You will not be charged again unless you subscribe again.`;
+    activeCopy = t('Auto-renew is off. Premium access continues until {{expiry}}. You will not be charged again unless you subscribe again.', {
+      expiry: expiry || t('the current period ends'),
+    });
   } else if (user?.subscriptionAutoRenewing === true) {
-    activeCopy = `Auto-renew is on. Your ${planLabel} subscription renews at ${
-      activePrice ?? "the amount shown in your app store settings"
-    } each ${planLabel === "yearly" ? "year" : "month"}${
-      expiry ? ` and is active until ${expiry}.` : "."
-    } Manage or cancel it in your app store settings.`;
+    activeCopy = t('Auto-renew is on. Your {{plan}} subscription renews at {{price}} each {{period}}. Manage or cancel it in your app store settings.', {
+      plan: translatedPlan,
+      price: activePrice ?? t('the amount shown in your app store settings'),
+      period: t(planLabel === 'yearly' ? 'year' : 'month'),
+    });
+    if (expiry) activeCopy += ' ' + t('Active until {{expiry}}.', { expiry });
   } else {
-    activeCopy = `Your ${planLabel} subscription is active${
-      expiry ? ` until ${expiry}` : ""
-    }. Check your app store settings for renewal details.`;
+    activeCopy = t('Your {{plan}} subscription is active. Check your app store settings for renewal details.', { plan: translatedPlan });
+    if (expiry) activeCopy += ' ' + t('Active until {{expiry}}.', { expiry });
   }
 
   return (
@@ -53,7 +56,7 @@ export default function SubscriptionScreen() {
       <View className="flex-row items-center px-2 py-2">
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={showClose ? "Close" : "Go back"}
+          accessibilityLabel={showClose ? t("Close") : t("Go back")}
           hitSlop={8}
           onPress={() =>
             showClose
@@ -78,20 +81,16 @@ export default function SubscriptionScreen() {
       <ScrollView contentContainerClassName="px-6 pb-8 pt-3">
         <View className="items-center">
           <Ionicons name="diamond" size={64} color="#F25F45" />
-          <Text className="mt-4 text-center text-[24px] font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">
-            Unlock every premium story
+          <Text className="mt-4 text-center text-[24px] font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">{t("Unlock every premium story")}
           </Text>
-          <Text className="mt-2.5 text-center text-[15px] leading-[22px] text-[#241F1C] dark:text-[#F8F5F0]">
-            Your app store handles payment and subscription settings. You can
-            manage or cancel in {storeName} settings; if you cancel, Premium
-            stays active until the paid period ends.
+          <Text className="mt-2.5 text-center text-[15px] leading-[22px] text-[#241F1C] dark:text-[#F8F5F0]">{t('Your app store handles payment and subscription settings. You can manage or cancel in {{store}} settings; if you cancel, Premium stays active until the paid period ends.', { store: storeName })}
           </Text>
         </View>
 
         <View className="mt-6">
           {loading ? (
             <View className="items-center py-6">
-              <Text className="text-[#A8A29E]">Loading…</Text>
+              <Text className="text-[#A8A29E]">{t("Loading…")}</Text>
             </View>
           ) : active ? (
             <View className="rounded-[14px] bg-[#16803C]/10 p-4">
@@ -100,40 +99,32 @@ export default function SubscriptionScreen() {
               </Text>
             </View>
           ) : !plan ? (
-            <Text className="text-center text-[15px] text-[#241F1C] dark:text-[#F8F5F0]">
-              Subscription plans are not available yet.
+            <Text className="text-center text-[15px] text-[#241F1C] dark:text-[#F8F5F0]">{t("Subscription plans are not available yet.")}
             </Text>
           ) : (
             <View className="rounded-[18px] border border-[#D9D0C8]/50 p-4 dark:border-[#4A4542]">
-              <Text className="text-xl font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">
-                Monthly
+              <Text className="text-xl font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">{t("Monthly")}
               </Text>
               <Text
                 className={`mt-1 text-[24px] font-extrabold ${
                   price ? "text-coral" : "text-[#A8A29E]"
                 }`}
               >
-                {price ?? "Price unavailable in this store"}
+                {price ?? t("Price unavailable in this store")}
               </Text>
-              <Text className="text-[13px] text-[#A8A29E]">
-                per month · billed by {storeName}
+              <Text className="text-[13px] text-[#A8A29E]">{t('per month · billed by {{store}}', { store: storeName })}
               </Text>
               {price ? (
                 <>
-                  <Text className="mt-2 text-[15px] leading-[21px] text-[#241F1C] dark:text-[#F8F5F0]">
-                    Renews automatically at {price} every month until you
-                    cancel.
+                  <Text className="mt-2 text-[15px] leading-[21px] text-[#241F1C] dark:text-[#F8F5F0]">{t('Renews automatically at {{price}} every month until you cancel.', { price })}
                   </Text>
-                  <Text className="mt-1 text-[13px] leading-[19px] text-[#A8A29E]">
-                    The store shows your final localized checkout price. Manage
-                    or cancel anytime in {storeName} settings; Premium stays
-                    active through the paid period.
+                  <Text className="mt-1 text-[13px] leading-[19px] text-[#A8A29E]">{t('The store shows your final localized checkout price. Manage or cancel anytime in {{store}} settings; Premium stays active through the paid period.', { store: storeName })}
                   </Text>
                 </>
               ) : null}
               <View className="mt-3 items-end">
                 <ActionButton
-                  label="Subscribe"
+                  label={t("Subscribe")}
                   disabled={!price || busy}
                   onPress={() => void buy()}
                   className="min-w-[130px]"
@@ -145,20 +136,20 @@ export default function SubscriptionScreen() {
 
         {message ? (
           <Text className="mt-3 text-center text-[14px] text-red-500">
-            {message}
+            {t(message)}
           </Text>
         ) : null}
 
         <View className="mt-3">
           {canManageInStore ? (
             <TextAction
-              label={`Manage or cancel in ${storeName}`}
+              label={t('Manage or cancel in {{store}}', { store: storeName })}
               onPress={() => void openStoreSubscriptions()}
               color="coral"
             />
           ) : null}
           <TextAction
-            label="Restore subscription"
+            label={t("Restore subscription")}
             disabled={busy || loading}
             onPress={() => void restore()}
             color="coral"

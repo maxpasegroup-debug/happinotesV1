@@ -1,3 +1,4 @@
+import { useAppLanguage } from '@/providers/app-language';
 import { useAppMotion } from '@/providers/motion';
 import { Pressable, Text, View, useWindowDimensions } from "react-native";
 import { Image } from "expo-image";
@@ -78,6 +79,7 @@ export function BookCard({
   saving?: boolean;
   onToggleSaved?: () => void;
 }) {
+  const { t } = useAppLanguage();
   const fallback = useBookCardWidth();
   const cardWidth = width ?? fallback;
   return (
@@ -98,8 +100,8 @@ export function BookCard({
             accessibilityRole="button"
             accessibilityLabel={
               saved
-                ? `Remove ${book.title} from library`
-                : `Save ${book.title} to library`
+                ? t('Remove {{title}} from library', { title: book.title })
+                : t('Save {{title}} to library', { title: book.title })
             }
             accessibilityState={{ disabled: saving, selected: saved }}
             disabled={saving}
@@ -143,7 +145,7 @@ export function BookCard({
         className="mt-[3px] text-[11px] leading-[14px] text-[#6B625C] dark:text-[#A8A29E]"
       >
         {book.language} •{" "}
-        {book.accessType === "premium" ? "Premium subscription" : "Free"}
+        {book.accessType === "premium" ? t("Premium subscription") : t("Free")}
       </Text>
     </Pressable>
   );
@@ -164,6 +166,7 @@ export function FeaturedCard({
   onPress: () => void;
   onToggleSaved: () => void;
 }) {
+  const { t } = useAppLanguage();
   const { animationsEnabled } = useAppMotion();
   return (
     <Pressable
@@ -195,7 +198,7 @@ export function FeaturedCard({
       />
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={saved ? "Remove from library" : "Save to library"}
+        accessibilityLabel={saved ? t("Remove from library") : t("Save to library")}
         onPress={(event) => {
           event.stopPropagation();
           onToggleSaved();

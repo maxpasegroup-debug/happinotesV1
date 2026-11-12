@@ -1,3 +1,4 @@
+import { useAppLanguage } from '@/providers/app-language';
 import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,6 +7,7 @@ import { ThemeText, ThemeView } from '@/components/ui/theme-motion';
 import { usePlayer } from '@/providers/player';
 
 export function MiniPlayer() {
+  const { t } = useAppLanguage();
   const { currentBook, currentEpisode, status, togglePlayback } = usePlayer();
 
   if (!currentBook) return null;
@@ -13,13 +15,13 @@ export function MiniPlayer() {
   const subtitle =
     currentEpisode?.title ||
     currentBook.episodes[0]?.title ||
-    'Episode 1';
+    t('Episode {{number}}', { number: 1 });
 
   return (
     <ThemeView lightBackground="#F6F6F6" darkBackground="#242424" lightBorder="rgba(217,208,200,0.6)" darkBorder="rgba(74,69,66,0.7)" className="flex-row items-center border-t px-4 py-1">
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Open player"
+        accessibilityLabel={t("Open player")}
         onPress={() => router.push('/player')}
         className="flex-1 flex-row items-center py-1.5 active:opacity-80"
       >
@@ -51,7 +53,7 @@ export function MiniPlayer() {
       </Pressable>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={status.playing ? 'Pause' : 'Play'}
+        accessibilityLabel={status.playing ? t("Pause") : t("Play")}
         hitSlop={8}
         onPress={togglePlayback}
         className="h-11 w-11 items-center justify-center active:opacity-70"

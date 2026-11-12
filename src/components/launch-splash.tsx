@@ -1,3 +1,4 @@
+import { useAppLanguage } from '@/providers/app-language';
 import { useAppMotion } from '@/providers/motion';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Animated, Image, Text } from 'react-native';
@@ -5,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { USE_NATIVE_DRIVER } from '@/lib/app-environment';
 
 export function LaunchSplash() {
+  const { t } = useAppLanguage();
   const { animationsEnabled } = useAppMotion();
   const [progress] = useState(() => new Animated.Value(0));
 
@@ -39,7 +41,7 @@ export function LaunchSplash() {
       <Text className="mt-4 text-center text-[38px] font-black tracking-tight">
         <Text className="text-saffron">Happi</Text><Text className="text-coral">Notes</Text>
       </Text>
-      <Text className="mt-2 font-semibold text-[#5B4034]">Stories that stay with you.</Text>
+      <Text className="mt-2 font-semibold text-[#5B4034]">{t("Stories that stay with you.")}</Text>
       <ActivityIndicator color="#F6B91A" className="mt-7" />
     </SafeAreaView>
   );

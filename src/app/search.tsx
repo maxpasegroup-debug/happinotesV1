@@ -1,3 +1,4 @@
+import { useAppLanguage } from '@/providers/app-language';
 import { useEffect, useState } from "react";
 import {
   FlatList,
@@ -17,6 +18,7 @@ import { InlineState } from "@/components/ui/inline-state";
 import type { Book } from "@/lib/types";
 
 export default function SearchScreen() {
+  const { t } = useAppLanguage();
   const { books, loading, error, loadBooks } = useBooks();
   const { width } = useWindowDimensions();
   const [query, setQuery] = useState("");
@@ -40,21 +42,19 @@ export default function SearchScreen() {
       <View className="flex-row items-center px-2 py-2">
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t("Go back")}
           hitSlop={8}
           onPress={() => router.back()}
           className="h-11 w-11 items-center justify-center rounded-full active:bg-black/5 dark:active:bg-white/10"
         >
           <Ionicons name="arrow-back" size={24} color="#A8A29E" />
         </Pressable>
-        <Text className="ml-1 text-xl font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">
-          Search
+        <Text className="ml-1 text-xl font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">{t("Search")}
         </Text>
       </View>
 
       <View className="px-4 pt-2">
-        <Text className="text-[28px] font-black text-[#241F1C] dark:text-[#F8F5F0]">
-          Discover
+        <Text className="text-[28px] font-black text-[#241F1C] dark:text-[#F8F5F0]">{t("Discover")}
         </Text>
         <View className="mt-3.5 h-[52px] flex-row items-center rounded-[14px] border border-[#D9D0C8]/60 bg-[#F6F6F6] px-4 dark:border-[#4A4542] dark:bg-[#242424]">
           <Ionicons name="search" size={20} color="#A8A29E" />
@@ -62,7 +62,7 @@ export default function SearchScreen() {
             value={query}
             onChangeText={onChange}
             onSubmitEditing={() => void loadBooks({ query: query.trim() })}
-            placeholder="Search books"
+            placeholder={t("Search books")}
             placeholderTextColor="#A8A29E"
             autoCapitalize="none"
             returnKeyType="search"
@@ -71,7 +71,7 @@ export default function SearchScreen() {
           {query ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Clear search"
+              accessibilityLabel={t("Clear search")}
               hitSlop={8}
               onPress={() => onChange("")}
               className="p-1"
@@ -88,16 +88,16 @@ export default function SearchScreen() {
         ) : error ? (
           <InlineState
             icon="cloud-offline-outline"
-            title="Search is unavailable"
+            title={t("Search is unavailable")}
             message={error}
-            actionLabel="Try again"
+            actionLabel={t("Try again")}
             onAction={() => void loadBooks({ query: query.trim() })}
           />
         ) : books.length === 0 ? (
           <InlineState
             icon="search-outline"
-            title="No stories found"
-            message="Try another title."
+            title={t("No stories found")}
+            message={t("Try another title.")}
           />
         ) : (
           <FlatList

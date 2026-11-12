@@ -1,6 +1,7 @@
+import { useAppLanguage } from '@/providers/app-language';
 import { useAppMotion } from '@/providers/motion';
 import { useCallback, useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   Easing,
@@ -17,8 +18,9 @@ const glide = { duration: 280, dampingRatio: 1, overshootClamping: true, reduceM
 const fade = { duration: 320, easing: Easing.inOut(Easing.cubic), reduceMotion: ReduceMotion.System };
 
 export function AppearanceToggle() {
+  const { t } = useAppLanguage();
   const { animationsEnabled } = useAppMotion();
-  const { dark, ready, setDark } = useAppTheme();
+  const { dark, auto, ready, setDark, setAuto } = useAppTheme();
   const target = useRef(dark);
   const progress = useSharedValue(dark ? 1 : 0);
   const position = useSharedValue(dark ? 1 : 0);
@@ -69,11 +71,26 @@ export function AppearanceToggle() {
   }));
 
   return (
+    <View style={styles.controls}>
+    <Pressable
+      accessibilityRole="checkbox"
+      accessibilityLabel={t('Automatic day and night theme')}
+      accessibilityHint={t('Light from 6 AM to 6 PM; dark overnight.')}
+      accessibilityState={{ checked: auto, disabled: !ready }}
+      disabled={!ready}
+      onPress={() => void setAuto(!auto)}
+      style={styles.autoTarget}
+    >
+      <View style={[styles.checkbox, { borderColor: auto ? '#F25F45' : dark ? '#8C8580' : '#A8A29E', backgroundColor: auto ? '#F25F45' : 'transparent' }]}>
+        {auto ? <Ionicons name="checkmark" size={11} color="#FFFFFF" /> : null}
+      </View>
+      <Text style={[styles.autoLabel, { color: auto ? '#F25F45' : dark ? '#B8B0AA' : '#6B625C' }]}>{t('Auto')}</Text>
+    </Pressable>
     <Pressable
       accessibilityRole="switch"
-      accessibilityLabel="Dark mode"
+      accessibilityLabel={t("Dark mode")}
       accessibilityState={{ checked: dark, disabled: !ready }}
-      accessibilityHint={dark ? 'Switch to light appearance' : 'Switch to dark appearance'}
+      accessibilityHint={t(dark ? 'Switch to light appearance' : 'Switch to dark appearance')}
       disabled={!ready}
       onPress={switchTheme}
       onPressIn={() => pressed.set(animationsEnabled ? withTiming(0.95, { duration: 90, reduceMotion: ReduceMotion.System }) : 1)}
@@ -95,10 +112,15 @@ export function AppearanceToggle() {
         </Animated.View>
       </Animated.View>
     </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  controls: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  autoTarget: { minWidth: 44, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  checkbox: { width: 14, height: 14, borderRadius: 4, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  autoLabel: { fontSize: 10, fontWeight: '600' },
   touchTarget: { width: 76, height: 48, alignItems: 'center', justifyContent: 'center' },
   track: { width: 72, height: 40, borderRadius: 20, borderWidth: 1 },
   day: { position: 'absolute', right: 10, top: 11 },

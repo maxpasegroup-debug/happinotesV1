@@ -1,7 +1,7 @@
+import { useAppLanguage } from '@/providers/app-language';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Pressable,
-  RefreshControl,
   ScrollView,
   Text,
   View,
@@ -23,10 +23,17 @@ import { InlineState, SectionTitle } from '@/components/ui/inline-state';
 import { languageLabel } from '@/lib/format';
 import type { Book, HappyBite } from '@/lib/types';
 import { apiErrorMessage } from '@/lib/api';
+import { BookPullSurface } from '@/components/ui/book-pull-surface';
+import { useElasticRefresh } from '@/hooks/use-elastic-refresh';
+import { PullScrollView } from '@/components/ui/pull-scrollables';
+import { LanguageSheet } from '@/components/ui/language-sheet';
 import { happyBiteAsBook, HappyBiteAccessError } from '@/lib/happy-bites';
 export default function HomeTab() {
+  const { t } = useAppLanguage();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
+  const { user, updateLanguage } = useAuth();
+  const [languageOpen, setLanguageOpen] = useState(false);
+  const [savingLanguage, setSavingLanguage] = useState(false);
   const {
     books,
     upcoming,
@@ -47,6 +54,20 @@ export default function HomeTab() {
   const preference = user?.languagePreference ?? 'all';
   const [showAllLanguages, setShowAllLanguages] = useState(false);
   const activePreference = showAllLanguages ? 'all' : preference;
+  const selectListeningLanguage = async (language: string) => {
+    if (savingLanguage) return;
+    setSavingLanguage(true);
+    try {
+      await updateLanguage(language);
+      setShowAllLanguages(false);
+      setLanguageOpen(false);
+      await loadBooks({ language: language === 'all' ? undefined : language, forceRefresh: true });
+    } catch (exception) {
+      showToast(apiErrorMessage(exception), false);
+    } finally {
+      setSavingLanguage(false);
+    }
+  };
   const matches = useCallback(
     (book: Book) =>
       activePreference === 'all' ||
@@ -81,6 +102,8 @@ export default function HomeTab() {
       setRefreshing(false);
     }
   };
+
+  const elasticRefresh = useElasticRefresh(refreshing, refresh);
 
   const openBook = (book: Book) => {
     router.push({ pathname: '/book/[id]', params: { id: book.id } });
@@ -131,19 +154,13 @@ export default function HomeTab() {
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-white dark:bg-[#111111]" style={{ minHeight: 0 }}>
-      <ScrollView
+      <BookPullSurface motion={elasticRefresh} refreshing={refreshing}>
+      <PullScrollView
+        {...elasticRefresh.scrollProps}
         className="flex-1"
         style={{ minHeight: 0 }}
         contentContainerClassName="px-4 pt-3"
         contentContainerStyle={{ paddingBottom: 40 + insets.bottom }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => void refresh()}
-            tintColor="#F25F45"
-            colors={['#F25F45']}
-          />
-        }
       >
         <View className="flex-row items-center">
           <View className="h-12 w-12 items-center justify-center rounded-full bg-coral">
@@ -153,13 +170,12 @@ export default function HomeTab() {
             <Text className="text-[22px] font-black leading-7 text-[#241F1C] dark:text-[#F8F5F0]">
               HappiNotes
             </Text>
-            <Text className="text-xs text-[#A8A29E]">
-              Listen. Learn. Feel better.
+            <Text className="text-xs text-[#A8A29E]">{t("Listen. Learn. Feel better.")}
             </Text>
           </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Notifications"
+            accessibilityLabel={t("Notifications")}
             hitSlop={8}
             onPress={() => {
               void loadNotifications(true);
@@ -175,26 +191,33 @@ export default function HomeTab() {
           </Pressable>
         </View>
 
+        <View className="mt-[18px] flex-row items-center gap-2">
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Search books and stories"
+          accessibilityLabel={t("Search books and stories")}
           onPress={() => router.navigate('/search')}
-          className="mt-[18px] h-[52px] flex-row items-center rounded-2xl bg-[#F6F6F6] px-4 active:opacity-80 dark:bg-[#242424]"
+          className="min-h-[52px] flex-1 flex-row items-center rounded-2xl bg-[#F6F6F6] px-4 py-3 active:opacity-80 dark:bg-[#242424]"
         >
           <Ionicons name="search" size={20} color="#A8A29E" />
-          <Text className="ml-3 text-[15px] text-[#A8A29E]">
-            Search books and stories
+          <Text numberOfLines={2} className="ml-3 flex-1 text-[15px] text-[#A8A29E]">{t("Search books and stories")}
           </Text>
         </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={t("Choose listening language")} disabled={savingLanguage}
+          onPress={() => setLanguageOpen(true)}
+          className="min-h-[52px] max-w-[120px] items-center justify-center rounded-2xl bg-[#FFF0E8] px-3 py-2 dark:bg-[#352720]">
+          <Ionicons name="language-outline" size={20} color="#F25F45" />
+          <Text numberOfLines={1} className="mt-1 text-[11px] font-bold text-coral">{t(activePreference === 'all' ? 'All languages' : languageLabel(activePreference))}</Text>
+        </Pressable>
+        </View>
 
         <View className="mt-6">
           <View className="mb-4 flex-row items-center justify-between">
             <View className="flex-1">
-              <SectionTitle>Audiobooks</SectionTitle>
-              <Text className="mt-1 text-[13px] text-[#6B625C] dark:text-[#A8A29E]">The newest additions to your listening list.</Text>
+              <SectionTitle>{t("Audiobooks")}</SectionTitle>
+              <Text className="mt-1 text-[13px] text-[#6B625C] dark:text-[#A8A29E]">{t("The newest additions to your listening list.")}</Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="See all audiobooks" onPress={() => router.navigate('/search')} className="py-3 pl-3">
-              <Text className="text-sm font-extrabold text-coral">See all</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel={t("See all audiobooks")} onPress={() => router.navigate('/search')} className="py-3 pl-3">
+              <Text className="text-sm font-extrabold text-coral">{t("See all")}</Text>
             </Pressable>
           </View>
           {!hasLoaded || loading ? (
@@ -204,29 +227,25 @@ export default function HomeTab() {
           ) : error ? (
             <InlineState
               icon="cloud-offline-outline"
-              title="Couldn’t load stories"
+              title={t("Couldn’t load stories")}
               message={error}
-              actionLabel="Try again"
+              actionLabel={t("Try again")}
               onAction={() => void loadBooks({ forceRefresh: true })}
             />
           ) : visibleBooks.length === 0 ? (
             books.length > 0 ? (
               <InlineState
                 icon="language-outline"
-                title="No stories in this language yet"
-                message={`Nothing is published in ${languageLabel(
-                  preference,
-                )} yet. The catalogue has ${
-                  books.length
-                } ${books.length === 1 ? 'story' : 'stories'} in other languages.`}
-                actionLabel="Show all languages"
+                title={t("No stories in this language yet")}
+                message={t('Nothing is published in {{language}} yet. The catalogue has {{count}} stories in other languages.', { language: t(languageLabel(preference)), count: books.length })}
+                actionLabel={t("Show all languages")}
                 onAction={() => setShowAllLanguages(true)}
               />
             ) : (
               <InlineState
                 icon="book-outline"
-                title="Your next story is on its way"
-                message="New audio stories will appear here."
+                title={t("Your next story is on its way")}
+                message={t("New audio stories will appear here.")}
               />
             )
           ) : (
@@ -237,10 +256,10 @@ export default function HomeTab() {
           <View className="flex-row items-center justify-between">
             <View className="flex-1">
               <SectionTitle>Happy Bites</SectionTitle>
-              <Text className="mt-1 text-[13px] text-[#6B625C] dark:text-[#A8A29E]">Small thoughts. Meaningful changes.</Text>
+              <Text className="mt-1 text-[13px] text-[#6B625C] dark:text-[#A8A29E]">{t("Small thoughts. Meaningful changes.")}</Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel="See all Happy Bites" onPress={() => router.navigate('/(tabs)/happy-bites')} className="py-3 pl-3">
-              <Text className="text-sm font-extrabold text-coral">See all</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel={t("See all Happy Bites")} onPress={() => router.navigate('/(tabs)/happy-bites')} className="py-3 pl-3">
+              <Text className="text-sm font-extrabold text-coral">{t("See all")}</Text>
             </Pressable>
           </View>
           {happyBites.length > 0 ? (
@@ -251,8 +270,8 @@ export default function HomeTab() {
             <View className="mt-3 flex-row items-center rounded-2xl border border-coral/20 bg-[#FFF3EF] p-5 dark:bg-[#291C18]">
               <View className="mr-4 h-12 w-12 items-center justify-center rounded-full bg-coral/15"><Ionicons name="sparkles-outline" size={25} color="#F25F45" /></View>
               <View className="flex-1">
-                <Text className="font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">A little inspiration is on its way</Text>
-                <Text className="mt-1 text-sm leading-5 text-[#6B625C] dark:text-[#A8A29E]">Free audio bites, about a minute each. New thoughts will appear here.</Text>
+                <Text className="font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">{t("A little inspiration is on its way")}</Text>
+                <Text className="mt-1 text-sm leading-5 text-[#6B625C] dark:text-[#A8A29E]">{t("Free audio bites, about a minute each. New thoughts will appear here.")}</Text>
               </View>
             </View>
           )}
@@ -260,8 +279,8 @@ export default function HomeTab() {
 
         {upcomingBooks.length > 0 ? (
           <View className="mt-7">
-            <SectionTitle>Coming Soon</SectionTitle>
-            <Text className="mt-1 text-[13px] text-[#6B625C] dark:text-[#A8A29E]">A little preview of what’s on the way.</Text>
+            <SectionTitle>{t("Coming Soon")}</SectionTitle>
+            <Text className="mt-1 text-[13px] text-[#6B625C] dark:text-[#A8A29E]">{t("A little preview of what’s on the way.")}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-4" className="mt-3">
               {upcomingBooks.map((book) => (
                 <View key={book.id} style={{ width: 140 }} accessible accessibilityLabel={`${book.title}, coming soon`}>
@@ -269,17 +288,20 @@ export default function HomeTab() {
                     <Cover book={book} className="h-full w-full" />
                     <View className="absolute bottom-2 left-2 right-2 flex-row items-center justify-center gap-1 rounded-lg bg-black/70 px-2 py-1.5">
                       <Ionicons name="time-outline" size={13} color="#FFFFFF" />
-                      <Text className="text-[10px] font-extrabold uppercase tracking-wide text-white">Coming soon</Text>
+                      <Text className="text-[10px] font-extrabold uppercase tracking-wide text-white">{t("Coming soon")}</Text>
                     </View>
                   </View>
                   <Text numberOfLines={2} className="mt-2 text-sm font-bold leading-[17px] text-[#241F1C]/80 dark:text-[#F8F5F0]/80">{book.title}</Text>
-                  {book.language ? <Text className="mt-1 text-[11px] text-[#6B625C] dark:text-[#A8A29E]">{languageLabel(book.language)}</Text> : null}
+                  {book.language ? <Text className="mt-1 text-[11px] text-[#6B625C] dark:text-[#A8A29E]">{t(languageLabel(book.language))}</Text> : null}
                 </View>
               ))}
             </ScrollView>
           </View>
         ) : null}
-      </ScrollView>
+      </PullScrollView>
+      </BookPullSurface>
+      <LanguageSheet visible={languageOpen} selected={activePreference} disabled={savingLanguage}
+        onSelect={(language) => void selectListeningLanguage(language)} onClose={() => setLanguageOpen(false)} />
     </SafeAreaView>
   );
 }

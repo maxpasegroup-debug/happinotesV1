@@ -19,6 +19,8 @@ import { usePlayer } from '@/providers/player';
 import { useToast } from '@/providers/toast';
 import { LanguageSheet } from '@/components/ui/language-sheet';
 import { apiErrorMessage } from '@/lib/api';
+import { useAppLanguage } from '@/providers/app-language';
+import { APP_LANGUAGE_NAMES, isAppLanguage } from '@/lib/translations';
 import type { ReactNode } from 'react';
 
 function SettingRow({
@@ -72,9 +74,11 @@ function Divider() {
 }
 
 export default function ProfileTab() {
-  const { user, updateLanguage, logout } = useAuth();
+  const { t } = useAppLanguage();
+  const { user, logout } = useAuth();
+  const { language: appLanguage, setLanguage, ready: languageReady } = useAppLanguage();
   const { enabled: animationsOn, reducedMotion, ready: motionReady, setEnabled: setAnimations } = useAppMotion();
-  const { loadBooks, reset: resetBooks } = useBooks();
+  const { reset: resetBooks } = useBooks();
   const { stop } = usePlayer();
   const { showToast } = useToast();
   const [languageOpen, setLanguageOpen] = useState(false);
@@ -86,14 +90,10 @@ export default function ProfileTab() {
   const subscriptionActive = user?.subscriptionActive === true;
 
   const selectLanguage = async (language: string) => {
+    if (!isAppLanguage(language)) return;
     setLanguageOpen(false);
     try {
-      await updateLanguage(language);
-      await loadBooks({
-        language: language === 'all' ? undefined : language,
-        forceRefresh: true,
-      });
-      showToast('Language preference updated');
+      await setLanguage(language);
     } catch (exception) {
       showToast(apiErrorMessage(exception), false);
     }
@@ -123,7 +123,7 @@ export default function ProfileTab() {
       <SafeAreaView edges={['top']} className="flex-1">
         <ScrollView contentContainerClassName="px-5 pb-8 pt-4">
           <View className="flex-row items-center justify-between">
-            <ThemeText lightColor="#241F1C" darkColor="#F8F5F0" className="flex-1 text-[28px] font-black">Profile</ThemeText>
+            <ThemeText lightColor="#241F1C" darkColor="#F8F5F0" className="flex-1 text-[28px] font-black">{t("Profile")}</ThemeText>
             <AppearanceToggle />
           </View>
 
@@ -145,8 +145,8 @@ export default function ProfileTab() {
               title="HappiNotes Premium"
               subtitle={
                 subscriptionActive
-                  ? `${user?.subscriptionPlan === 'yearly' ? 'Yearly' : 'Monthly'} subscription active`
-                  : 'Choose the monthly Premium plan'
+                  ? t('{{plan}} subscription active', { plan: t(user?.subscriptionPlan === 'yearly' ? 'Yearly' : 'Monthly') })
+                  : t("Choose the monthly Premium plan")
               }
               onPress={() => router.push('/subscription')}
               trailing={<Ionicons name="chevron-forward" size={20} color="#A8A29E" />}
@@ -154,24 +154,24 @@ export default function ProfileTab() {
             <Divider />
             <SettingRow
               icon="language"
-              title="Language preference"
-              subtitle={user?.languagePreference ?? 'all'}
+              title={t("App language")}
+              subtitle={APP_LANGUAGE_NAMES[appLanguage]}
               onPress={() => setLanguageOpen(true)}
               trailing={<Ionicons name="chevron-forward" size={20} color="#A8A29E" />}
             />
             <Divider />
             <View className="flex-row items-center py-3.5">
-              <Ionicons name="sparkles-outline" size={23} color="#A8A29E" />
+              <Ionicons name="aperture-outline" size={23} color="#A8A29E" />
               <View className="ml-4 mr-3 flex-1">
-                <ThemeText lightColor="#241F1C" darkColor="#F8F5F0" className="text-[16px] font-semibold">App animations</ThemeText>
-                <ThemeText lightColor="#6B625C" darkColor="#A8A29E" className="mt-0.5 text-[13px]">{animationsOn ? reducedMotion ? 'Paused by your device’s Reduce Motion setting' : 'Smooth screen transitions and elastic tabs' : 'Instant screens and tab switching'}</ThemeText>
+                <ThemeText lightColor="#241F1C" darkColor="#F8F5F0" className="text-[16px] font-semibold">{t("App animations")}</ThemeText>
+                <ThemeText lightColor="#6B625C" darkColor="#A8A29E" className="mt-0.5 text-[13px]">{animationsOn ? reducedMotion ? t("Paused by your device’s Reduce Motion setting") : t("Smooth screen transitions and elastic tabs") : t("Instant screens and tab switching")}</ThemeText>
               </View>
-              <Switch accessibilityLabel="App animations" value={animationsOn} disabled={!motionReady} onValueChange={(value) => { void setAnimations(value).catch(() => showToast('Could not save the animation preference. Please try again.', false)); }} trackColor={{ false: '#8C8580', true: '#F25F45' }} thumbColor="#FFFFFF" />
+              <Switch accessibilityLabel={t("App animations")} value={animationsOn} disabled={!motionReady} onValueChange={(value) => { void setAnimations(value).catch(() => showToast('Could not save the animation preference. Please try again.', false)); }} trackColor={{ false: '#8C8580', true: '#F25F45' }} thumbColor="#FFFFFF" />
             </View>
             <Divider />
             <SettingRow
               icon="document-text-outline"
-              title="Legal"
+              title={t("Legal")}
               onPress={() => router.push('/legal')}
               trailing={<Ionicons name="chevron-forward" size={20} color="#A8A29E" />}
             />
@@ -186,7 +186,7 @@ export default function ProfileTab() {
               className="min-h-[56px] flex-1 flex-row items-center justify-center gap-2 rounded-[15px] border px-3 py-3 active:opacity-70"
             >
               <Ionicons name="trash-outline" size={20} color="#D65348" />
-              <ThemeText lightColor="#B83C32" darkColor="#FF9E94" className="shrink text-center text-[14px] font-bold">Delete account</ThemeText>
+              <ThemeText lightColor="#B83C32" darkColor="#FF9E94" className="shrink text-center text-[14px] font-bold">{t("Delete account")}</ThemeText>
             </ThemePressable>
 
             <ThemePressable
@@ -196,26 +196,28 @@ export default function ProfileTab() {
               className="min-h-[56px] flex-1 flex-row items-center justify-center gap-2 rounded-[15px] border px-3 py-3 active:opacity-70"
             >
               <Ionicons name="log-out-outline" size={20} color="#F25F45" />
-              <Text className="shrink text-center text-[14px] font-extrabold text-coral">Logout</Text>
+              <Text className="shrink text-center text-[14px] font-extrabold text-coral">{t("Logout")}</Text>
             </ThemePressable>
           </View>
         </ScrollView>
 
         <ConfirmationModal
           visible={logoutVisible}
-          title="Log out of HappiNotes?"
-          description="Audio playback will stop. You can sign in again whenever you're ready to listen."
+          title={t("Log out of HappiNotes?")}
+          description={t("Audio playback will stop. You can sign in again whenever you're ready to listen.")}
           icon="log-out-outline"
-          confirmLabel="Log out"
-          cancelLabel="Stay signed in"
+          confirmLabel={t("Log out")}
+          cancelLabel={t("Stay signed in")}
           loading={loggingOut}
           error={logoutError}
           onConfirm={() => void signOut()}
           onCancel={() => setLogoutVisible(false)}
         />
         <LanguageSheet
+          mode="app"
+          disabled={!languageReady}
           visible={languageOpen}
-          selected={user?.languagePreference ?? 'all'}
+          selected={appLanguage}
           onSelect={(language) => void selectLanguage(language)}
           onClose={() => setLanguageOpen(false)}
         />

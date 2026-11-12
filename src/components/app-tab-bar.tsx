@@ -1,3 +1,4 @@
+import { useAppLanguage } from '@/providers/app-language';
 import { useAppMotion } from '@/providers/motion';
 import { Platform, Pressable, StyleSheet, View, type ViewStyle } from "react-native";
 import { useEffect, useRef, useState } from 'react';
@@ -68,6 +69,7 @@ function TabIcon({ focused, icon, dark }: { focused: boolean; icon: (typeof ICON
 }
 
 export function AppTabBar({ state, emitter, navigateToTab }: TabBarProps) {
+  const { t } = useAppLanguage();
   const insets = useSafeAreaInsets();
   const { animationsEnabled } = useAppMotion();
   const { loadCollection } = useBooks();
@@ -156,7 +158,7 @@ export function AppTabBar({ state, emitter, navigateToTab }: TabBarProps) {
                   }}
                   accessibilityRole="tab"
                   accessibilityState={focused ? { selected: true } : {}}
-                  accessibilityLabel={LABELS[route.name] ?? route.name}
+                  accessibilityLabel={t(LABELS[route.name] ?? route.name)}
                   onPress={() => {
                     const event = emitter.emit({
                       type: "tabPress",
@@ -179,7 +181,7 @@ export function AppTabBar({ state, emitter, navigateToTab }: TabBarProps) {
                     darkColor={focused ? '#FFAD81' : '#A8A29E'}
                     className="mt-0.5 text-[11px] font-semibold"
                   >
-                    {LABELS[route.name] ?? route.name}
+                    {t(LABELS[route.name] ?? route.name)}
                   </ThemeText>
                 </Pressable>
               );

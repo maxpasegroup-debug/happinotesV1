@@ -1,3 +1,4 @@
+import { useAppLanguage } from '@/providers/app-language';
 import { Pressable, Share, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -38,6 +39,7 @@ function Action({
 }
 
 export default function PlayerScreen() {
+  const { t } = useAppLanguage();
   const {
     currentBook,
     currentEpisode,
@@ -58,22 +60,21 @@ export default function PlayerScreen() {
         <View className="flex-row items-center px-2 py-2">
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Close player"
+            accessibilityLabel={t("Close player")}
             hitSlop={8}
             onPress={() => router.back()}
             className="h-11 w-11 items-center justify-center rounded-full active:bg-black/5 dark:active:bg-white/10"
           >
             <Ionicons name="chevron-down" size={26} color="#A8A29E" />
           </Pressable>
-          <Text className="ml-1 text-xl font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">
-            Audio Only
+          <Text className="ml-1 text-xl font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">{t("Audio Only")}
           </Text>
         </View>
         <InlineState
           icon="headset-outline"
-          title="Nothing is playing"
-          message="Choose a story to start listening."
-          actionLabel="Browse stories"
+          title={t("Nothing is playing")}
+          message={t("Choose a story to start listening.")}
+          actionLabel={t("Browse stories")}
           onAction={() => router.back()}
         />
       </SafeAreaView>
@@ -124,15 +125,14 @@ export default function PlayerScreen() {
       <View className="flex-row items-center px-2 py-1">
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Close player"
+          accessibilityLabel={t("Close player")}
           hitSlop={8}
           onPress={() => router.back()}
           className="h-11 w-11 items-center justify-center rounded-full active:bg-black/5 dark:active:bg-white/10"
         >
           <Ionicons name="chevron-down" size={26} color="#A8A29E" />
         </Pressable>
-        <Text className="ml-1 text-xl font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">
-          Audio Only
+        <Text className="ml-1 text-xl font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">{t("Audio Only")}
         </Text>
       </View>
 
@@ -152,7 +152,7 @@ export default function PlayerScreen() {
         </View>
 
         <Text className="mt-[18px] text-[13px] uppercase text-[#A8A29E]">
-          {currentBook.accessType.toUpperCase()}  •  Episode {index + 1} /{' '}
+          {t(currentBook.accessType === 'free' ? 'Free' : 'Premium')} · {t('Episode {{number}}', { number: index + 1 })} /{' '}
           {episodes.length}
         </Text>
         <Text
@@ -194,7 +194,7 @@ export default function PlayerScreen() {
           <View className="flex-1 items-center">
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Previous episode"
+              accessibilityLabel={t("Previous episode")}
               onPress={() => void playPrevious()}
               className="h-12 w-12 items-center justify-center active:opacity-70"
             >
@@ -203,7 +203,7 @@ export default function PlayerScreen() {
           </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={status.playing ? 'Pause' : 'Play'}
+            accessibilityLabel={status.playing ? t("Pause") : t("Play")}
             onPress={togglePlayback}
             className="h-[76px] w-[76px] items-center justify-center active:opacity-80"
           >
@@ -216,7 +216,7 @@ export default function PlayerScreen() {
           <View className="flex-1 items-center">
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Next episode"
+              accessibilityLabel={t("Next episode")}
               onPress={() => void playNext()}
               className="h-12 w-12 items-center justify-center active:opacity-70"
             >
@@ -226,18 +226,18 @@ export default function PlayerScreen() {
         </View>
 
         <View className="mt-3 flex-row flex-wrap items-center justify-evenly gap-3">
-          <Action icon="timer-outline" label="Timer" />
+          <Action icon="timer-outline" label={t("Timer")} />
           <Action
             icon={saved ? 'bookmark' : 'bookmark-outline'}
-            label={saved ? 'Saved' : 'Save'}
+            label={saved ? t("Saved") : t("Save")}
             onPress={() => void toggleSaved()}
           />
           <Action
             icon="share-outline"
-            label="Share"
+            label={t("Share")}
             onPress={() =>
               void Share.share({
-                message: `${currentBook.title}\n\nListen on HappiNotes`,
+                message: `${currentBook.title}\n\n${t('Listen on HappiNotes')}`,
               })
             }
           />

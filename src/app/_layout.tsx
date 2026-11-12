@@ -1,7 +1,9 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { MotionProvider, useAppMotion } from '@/providers/motion';
+import { AppLanguageProvider } from '@/providers/app-language';
 import '../global.css';
 import { ThemeProvider, useAppTheme } from '@/providers/theme';
 import { ToastProvider } from '@/providers/toast';
@@ -57,6 +59,8 @@ function RootNavigator() {
 
 export default function RootLayout() {
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+    <AppLanguageProvider>
     <MotionProvider>
       <ThemeProvider>
         <ToastProvider>
@@ -78,5 +82,7 @@ export default function RootLayout() {
         </ToastProvider>
       </ThemeProvider>
     </MotionProvider>
+    </AppLanguageProvider>
+    </GestureHandlerRootView>
   );
 }

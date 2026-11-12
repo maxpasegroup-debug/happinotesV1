@@ -1,3 +1,4 @@
+import { useAppLanguage } from '@/providers/app-language';
 import { useCallback, useEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
@@ -37,6 +38,7 @@ function EpisodeRow({
   onPress: () => void;
   onStop: () => void;
 }) {
+  const { t } = useAppLanguage();
   return (
     <Pressable
       accessibilityRole="button"
@@ -66,8 +68,7 @@ function EpisodeRow({
           {episode.title}
         </Text>
         {playingNow ? (
-          <Text className="mt-1 text-[13px] font-bold text-coral">
-            Playing now
+          <Text className="mt-1 text-[13px] font-bold text-coral">{t("Playing now")}
           </Text>
         ) : episode.description ? (
           <Text
@@ -80,7 +81,7 @@ function EpisodeRow({
       </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={playingNow ? 'Stop episode' : 'Play episode'}
+        accessibilityLabel={playingNow ? t("Stop episode") : t("Play episode")}
         hitSlop={6}
         onPress={playingNow ? onStop : onPress}
         className="ml-3 h-11 w-11 items-center justify-center active:opacity-60"
@@ -102,6 +103,7 @@ function EpisodeRow({
 }
 
 export default function BookDetailScreen() {
+  const { t } = useAppLanguage();
   const params = useLocalSearchParams<{ id: string }>();
   const bookId = String(params.id ?? '');
   const { user, refreshUser } = useAuth();
@@ -235,7 +237,7 @@ export default function BookDetailScreen() {
         <View className="flex-row items-center px-2 py-2">
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Go back"
+            accessibilityLabel={t("Go back")}
             hitSlop={8}
             onPress={() => router.back()}
             className="h-11 w-11 items-center justify-center rounded-full active:bg-black/5 dark:active:bg-white/10"
@@ -246,9 +248,9 @@ export default function BookDetailScreen() {
         {hasLoaded ? (
           <InlineState
             icon="book-outline"
-            title="Story unavailable"
-            message="This book could not be found. Please refresh the catalogue."
-            actionLabel="Try again"
+            title={t("Story unavailable")}
+            message={t("This book could not be found. Please refresh the catalogue.")}
+            actionLabel={t("Try again")}
             onAction={() => void loadBooks({ forceRefresh: true })}
           />
         ) : (
@@ -308,7 +310,7 @@ export default function BookDetailScreen() {
           >
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Go back"
+              accessibilityLabel={t("Go back")}
               hitSlop={8}
               onPress={() => router.back()}
               className="h-11 w-11 items-center justify-center rounded-full bg-black/35 active:bg-black/50"
@@ -318,7 +320,7 @@ export default function BookDetailScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={
-                saved ? 'Remove from library' : 'Save to library'
+                saved ? t("Remove from library") : t("Save to library")
               }
               hitSlop={8}
               onPress={() => void toggleSaved()}
@@ -339,7 +341,7 @@ export default function BookDetailScreen() {
           </Text>
           <Text className="mt-2 text-[13px] uppercase text-[#A8A29E]">
             {book.language.toUpperCase()} •{' '}
-            {book.accessType === 'premium' ? 'Premium' : 'Free'}
+            {book.accessType === 'premium' ? t("Premium") : t("Free")}
           </Text>
 
           <View className="mt-3.5 flex-row">
@@ -375,12 +377,12 @@ export default function BookDetailScreen() {
                 }`}
               >
                 {isPurchased
-                  ? 'Purchased'
+                  ? t("Purchased")
                   : hasSubscription
-                    ? 'Subscribed'
+                    ? t("Subscribed")
                     : requiresSubscription
-                      ? 'Subscription required'
-                      : 'Free'}
+                      ? t("Subscription required")
+                      : t("Free")}
               </Text>
             </View>
           </View>
@@ -388,9 +390,7 @@ export default function BookDetailScreen() {
           {requiresSubscription ? (
             <View className="mt-3.5 flex-row items-center rounded-[14px] border border-coral/35 bg-coral/10 px-3.5 py-3">
               <Ionicons name="lock-closed-outline" size={20} color="#F25F45" />
-              <Text className="ml-2.5 flex-1 text-[14px] font-bold leading-5 text-[#241F1C] dark:text-[#F8F5F0]">
-                Premium story · A monthly subscription unlocks all premium
-                stories while active.
+              <Text className="ml-2.5 flex-1 text-[14px] font-bold leading-5 text-[#241F1C] dark:text-[#F8F5F0]">{t("Premium story · A monthly subscription unlocks all premium stories while active.")}
               </Text>
             </View>
           ) : null}
@@ -402,7 +402,7 @@ export default function BookDetailScreen() {
           {episodes.length > 0 ? (
             <View className="mt-7">
               <Text className="mb-2 text-xl font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">
-                {episodes.length} episodes available
+                {t('{{count}} episodes available', { count: episodes.length })}
               </Text>
               {episodes.map((episode, index) => {
                 const current =
@@ -449,10 +449,10 @@ export default function BookDetailScreen() {
           />
           <Text className="text-[15px] font-extrabold text-white">
             {requiresSubscription
-              ? 'View plans'
+              ? t("View plans")
               : isPlaying
-                ? 'Stop listening'
-                : 'Start listening'}
+                ? t("Stop listening")
+                : t("Start listening")}
           </Text>
         </Pressable>
       </View>

@@ -1,3 +1,4 @@
+import { useAppLanguage } from '@/providers/app-language';
 import { useAppMotion } from '@/providers/motion';
 import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
@@ -24,6 +25,7 @@ export function ConfirmationModal({
   onCancel?: () => void;
   children?: ReactNode;
 }) {
+  const { t } = useAppLanguage();
   const { animationsEnabled } = useAppMotion();
   const dismiss = () => { if (!loading) onCancel?.(); };
 
@@ -42,10 +44,10 @@ export function ConfirmationModal({
                 <View className={`mb-5 h-14 w-14 items-center justify-center rounded-2xl ${destructive ? 'bg-[#FDECE9] dark:bg-[#382321]' : 'bg-[#FFF0E8] dark:bg-[#352720]'}`}>
                   <Ionicons name={icon} size={27} color={destructive ? '#D65348' : '#F25F45'} />
                 </View>
-                <Text accessibilityRole="header" className="text-[23px] font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">{title}</Text>
-                <Text className="mt-2 text-[14px] leading-[22px] text-[#6B625C] dark:text-[#B8B0AA]">{description}</Text>
+                <Text accessibilityRole="header" className="text-[23px] font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">{t(title)}</Text>
+                <Text className="mt-2 text-[14px] leading-[22px] text-[#6B625C] dark:text-[#B8B0AA]">{t(description)}</Text>
                 {children ? <View className="mt-5">{children}</View> : null}
-                {error ? <Text accessibilityRole="alert" className="mt-4 text-sm leading-5 text-[#C62828] dark:text-[#FF9E94]">{error}</Text> : null}
+                {error ? <Text accessibilityRole="alert" className="mt-4 text-sm leading-5 text-[#C62828] dark:text-[#FF9E94]">{t(error)}</Text> : null}
                 <View className="mt-6 gap-2">
                   <ActionButton label={confirmLabel} variant={destructive ? 'danger' : 'primary'} loading={loading} disabled={disabled} onPress={onConfirm} />
                   {onCancel ? <ActionButton label={cancelLabel} variant="secondary" disabled={loading} onPress={dismiss} /> : null}
