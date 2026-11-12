@@ -16,6 +16,7 @@ import { router } from 'expo-router';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { fetchHappyBite, happyBiteAsBook, HappyBiteAccessError } from '@/lib/happy-bites';
 import { apiErrorMessage } from '@/lib/api';
+import { BACKGROUND_AUDIO_SUPPORTED, LOCK_SCREEN_CONTROLS_SUPPORTED } from '@/lib/app-environment';
 import { useAuth } from '@/providers/auth';
 import { useToast } from '@/providers/toast';
 import type { Book, BookEpisode } from "@/lib/types";
@@ -57,7 +58,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void setAudioModeAsync({
       playsInSilentMode: true,
-      shouldPlayInBackground: true,
+      shouldPlayInBackground: BACKGROUND_AUDIO_SUPPORTED,
       interruptionMode: "doNotMix",
     }).catch(() => {});
   }, []);
@@ -72,6 +73,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   const activateNowPlaying = useCallback(
     (book: Book, episode: BookEpisode | null) => {
+      // Android logs service-binding failures asynchronously, so try/catch
+      // cannot handle them. Do not request this native service in Expo Go.
+      if (!LOCK_SCREEN_CONTROLS_SUPPORTED) return;
       try {
         player.setActiveForLockScreen(
           true,
@@ -156,7 +160,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }
     if (requestId !== playbackRequest.current) return;
     try {
-      player.clearLockScreenControls();
+      if (LOCK_SCREEN_CONTROLS_SUPPORTED) player.clearLockScreenControls();
     } catch {
     }
     if (isHappyBite) player.replace(null);

@@ -17,5 +17,11 @@ export const IS_EXPO_GO = isRunningInExpoGo();
 export const PUSH_NOTIFICATIONS_SUPPORTED =
   Platform.OS !== "web" && !IS_EXPO_GO;
 
+/** Expo Go cannot apply our audio plugin's native background-service setup. */
+export const BACKGROUND_AUDIO_SUPPORTED = Platform.OS !== "web" && !IS_EXPO_GO;
+
+/** Installed builds use native controls; web uses the browser Media Session API. */
+export const LOCK_SCREEN_CONTROLS_SUPPORTED = !IS_EXPO_GO;
+
 /** react-native-web has no native animated driver; asking for one warns. */
 export const USE_NATIVE_DRIVER = Platform.OS !== "web";

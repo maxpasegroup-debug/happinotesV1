@@ -20,6 +20,28 @@ npx expo run:ios
 
 Android Firebase configuration is in `google-services.json` and matches the Android application ID in `app.json`. iOS push delivery needs the app’s Apple Firebase/APNs configuration and credentials.
 
+## Audio playback during development
+
+Expo Go supports foreground listening here. The app skips native background playback
+and lock-screen controls in Expo Go because it cannot apply this project's audio
+plugin configuration. This applies to both Happy Bites and audiobooks.
+
+`app.json` already enables `expo-audio`'s `enableBackgroundPlayback`. An installed
+build must include that configuration: restarting Metro or updating JavaScript
+cannot add Android's playback service to an older APK. Build and install a fresh
+preview APK to test background playback and lock-screen controls:
+
+```bash
+npx eas-cli build --platform android --profile preview
+```
+
+After installing the new APK, verify Happy Bite and audiobook play/pause, lock the
+screen, and check the media controls. On Android the generated manifest must contain
+`expo.modules.audio.service.AudioControlsService` with the `mediaPlayback` foreground
+service type and the `FOREGROUND_SERVICE` / `FOREGROUND_SERVICE_MEDIA_PLAYBACK`
+permissions. The Expo audio config plugin supplies these; do not manually edit
+generated native files. See the [Expo audio configuration docs](https://docs.expo.dev/versions/v58.0.0/sdk/audio/#playing-audio-in-the-background).
+
 ## Checks
 
 ```bash
