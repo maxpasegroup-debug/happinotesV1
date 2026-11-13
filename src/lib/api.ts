@@ -1,5 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
+import { happyBiteAsBook, parseHappyBite } from './happy-bite-access';
 import type {
   AccountDeletionRequestStatus,
   AppNotification,
@@ -341,6 +342,15 @@ export async function fetchUpcomingBooks() {
 }
 
 export async function fetchCollection() {
-  const result = await request<{ collection: any[] }>("/collection");
-  return (result.collection ?? []).map(parseBook);
+  const result = await request<{ collection?: any[]; happyBites?: any[] }>("/collection", { cache: 'no-store' });
+  return [
+    ...(result.collection ?? []).map(parseBook),
+    ...(result.happyBites ?? []).map((bite) => happyBiteAsBook(parseHappyBite(bite))),
+  ];
+}
+
+export function collectionItemPath(book: Pick<Book, 'id' | 'happyBiteId'>) {
+  return book.happyBiteId
+    ? `/collection/happy-bites/${encodeURIComponent(book.happyBiteId)}`
+    : `/collection/${encodeURIComponent(book.id)}`;
 }

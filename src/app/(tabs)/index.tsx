@@ -44,7 +44,7 @@ export default function HomeTab() {
     library,
     toggleCollection,
   } = useBooks();
-  const { items: happyBites, loadFirst: loadHappyBites } = useHappyBites();
+  const { items: happyBites, loading: happyBitesLoading, error: happyBitesError, loadFirst: loadHappyBites } = useHappyBites();
   const { playEpisode } = usePlayer();
   const { showToast } = useToast();
   const [savingBook, setSavingBook] = useState<string | null>(null);
@@ -97,7 +97,8 @@ export default function HomeTab() {
   const refresh = async () => {
     setRefreshing(true);
     try {
-      await Promise.all([loadBooks({ forceRefresh: true }), loadHappyBites('all', true)]);
+      // Keep the pull gesture busy until both sections finish, even if one fails.
+      await Promise.allSettled([loadBooks({ forceRefresh: true }), loadHappyBites('all', true)]);
     } finally {
       setRefreshing(false);
     }
@@ -262,7 +263,19 @@ export default function HomeTab() {
               <Text className="text-sm font-extrabold text-coral">{t("See all")}</Text>
             </Pressable>
           </View>
-          {happyBites.length > 0 ? (
+          {happyBitesLoading ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3" className="mt-3" accessibilityState={{ busy: true }}>
+              {[0, 1, 2].map((item) => (
+                <View key={item} style={{ width: Math.min(248, width - 64) }} className="gap-3">
+                  <SkeletonBox height={160} radius={16} />
+                  <SkeletonBox width="80%" height={16} />
+                  <SkeletonBox width={70} height={12} />
+                </View>
+              ))}
+            </ScrollView>
+          ) : happyBitesError ? (
+            <InlineState icon="cloud-offline-outline" title={t("Couldn’t load Happy Bites")} message={happyBitesError} actionLabel={t("Try again")} onAction={() => void loadHappyBites('all', true)} />
+          ) : happyBites.length > 0 ? (
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-3" className="mt-3">
               {happyBites.slice(0, 8).map((bite) => <HappyBiteCard key={bite.id} bite={bite} width={Math.min(248, width - 64)} onPress={() => void playHappyBite(bite)} />)}
             </ScrollView>

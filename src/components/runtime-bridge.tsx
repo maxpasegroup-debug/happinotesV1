@@ -7,24 +7,27 @@ import { loadPushNotifications } from "@/lib/push-notifications";
 import { useAuth } from "@/providers/auth";
 import { useAdmin } from "@/providers/admin";
 import { useBooks } from "@/providers/books";
+import { useHappyBites } from "@/providers/happy-bites";
 import { useNotifications } from "@/providers/notifications";
 import { useSubscription } from "@/providers/subscription";
 
 function RealtimeBridge() {
   const { user } = useAuth();
   const { reloadActive } = useBooks();
+  const { reloadActive: reloadHappyBites } = useHappyBites();
   const { loadAll } = useAdmin();
   const { reload } = useSubscription();
-  const callbacks = useRef({ reloadActive, loadAll, reload, role: user?.role });
+  const callbacks = useRef({ reloadActive, reloadHappyBites, loadAll, reload, role: user?.role });
 
   useEffect(() => {
-    callbacks.current = { reloadActive, loadAll, reload, role: user?.role };
+    callbacks.current = { reloadActive, reloadHappyBites, loadAll, reload, role: user?.role };
   });
 
   useEffect(() => {
     if (!user) return;
     let catalogTimer: ReturnType<typeof setTimeout> | undefined;
     let planTimer: ReturnType<typeof setTimeout> | undefined;
+    let happyBitesTimer: ReturnType<typeof setTimeout> | undefined;
 
     const refreshCatalog = () => {
       if (catalogTimer) clearTimeout(catalogTimer);
@@ -41,6 +44,12 @@ function RealtimeBridge() {
         void callbacks.current.reload();
       }, 300);
     };
+    const refreshHappyBites = () => {
+      if (happyBitesTimer) clearTimeout(happyBitesTimer);
+      happyBitesTimer = setTimeout(() => {
+        void callbacks.current.reloadHappyBites();
+      }, 300);
+    };
 
     const socket: Socket = io(API_ORIGIN || undefined, {
       path: API_SOCKET_PATH,
@@ -49,19 +58,23 @@ function RealtimeBridge() {
       autoConnect: true,
     });
     socket.on("connect", refreshCatalog);
+    socket.on("connect", refreshHappyBites);
     socket.on("books:changed", refreshCatalog);
+    socket.on("happy-bites:changed", refreshHappyBites);
     socket.on("subscription-plans:changed", refreshPlans);
 
     const appState = AppState.addEventListener("change", (state) => {
       if (state !== "active") return;
       if (!socket.connected) socket.connect();
       refreshCatalog();
+      refreshHappyBites();
       refreshPlans();
     });
 
     return () => {
       if (catalogTimer) clearTimeout(catalogTimer);
       if (planTimer) clearTimeout(planTimer);
+      if (happyBitesTimer) clearTimeout(happyBitesTimer);
       appState.remove();
       socket.removeAllListeners();
       socket.disconnect();

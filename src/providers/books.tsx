@@ -11,6 +11,7 @@ import {
   fetchBooks,
   fetchCollection,
   fetchUpcomingBooks,
+  collectionItemPath,
   request,
 } from "@/lib/api";
 import type { Book } from "@/lib/types";
@@ -25,6 +26,7 @@ type BooksContextValue = {
   books: Book[];
   upcoming: Book[];
   library: Book[];
+  savingIds: string[];
   loading: boolean;
   collectionLoading: boolean;
   collectionLoaded: boolean;
@@ -50,6 +52,10 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
   const [books, setBooks] = useState<Book[]>([]);
   const [upcoming, setUpcoming] = useState<Book[]>([]);
   const [library, setLibrary] = useState<Book[]>([]);
+  const [savingIds, setSavingIds] = useState<string[]>([]);
+  const pendingSaves = useRef(new Set<string>());
+  const collectionGeneration = useRef(0);
+  const collectionEdits = useRef(new Map<string, Book | null>());
   const [loading, setLoading] = useState(false);
   const [collectionLoading, setCollectionLoading] = useState(false);
   const [collectionLoaded, setCollectionLoaded] = useState(false);
@@ -128,56 +134,69 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
       if (collectionLoadingRef.current) return;
       if (collectionLoaded && !forceRefresh) return;
       collectionLoadingRef.current = true;
+      const generation = collectionGeneration.current;
+      collectionEdits.current.clear();
       setCollectionLoading(true);
       try {
-        const collection = await fetchCollection();
+        let collection = await fetchCollection();
+        if (generation !== collectionGeneration.current) return;
+        // A library fetch may have started before a save/remove finished.
+        for (const [id, edit] of collectionEdits.current) {
+          collection = collection.filter((item) => item.id !== id);
+          if (edit) collection.push(edit);
+        }
         libraryRef.current = collection;
         setLibrary(collection);
         setCollectionError(null);
       } catch (exception) {
-        setCollectionError(apiErrorMessage(exception));
+        if (generation === collectionGeneration.current) setCollectionError(apiErrorMessage(exception));
       } finally {
-        collectionLoadingRef.current = false;
-        setCollectionLoading(false);
-        setCollectionLoaded(true);
+        if (generation === collectionGeneration.current) {
+          collectionEdits.current.clear();
+          collectionLoadingRef.current = false;
+          setCollectionLoading(false);
+          setCollectionLoaded(true);
+        }
       }
     },
     [collectionLoaded],
   );
 
-  const addToCollection = useCallback(async (book: Book) => {
+  const updateCollection = useCallback(async (book: Book, save: boolean) => {
+    if (pendingSaves.current.has(book.id)) return 'Working…';
+    pendingSaves.current.add(book.id);
+    setSavingIds([...pendingSaves.current]);
+    const generation = collectionGeneration.current;
     try {
-      await request(`/collection/${book.id}`, { method: "POST" });
-      const next = libraryRef.current.some((item) => item.id === book.id)
+      await request(collectionItemPath(book), { method: save ? 'POST' : 'DELETE' });
+      if (generation !== collectionGeneration.current) return null;
+      if (collectionLoadingRef.current) collectionEdits.current.set(book.id, save ? book : null);
+      const next = !save ? libraryRef.current.filter((item) => item.id !== book.id)
+        : libraryRef.current.some((item) => item.id === book.id)
         ? libraryRef.current
         : [...libraryRef.current, book];
       libraryRef.current = next;
       setLibrary(next);
-      setCollectionLoaded(true);
       return null;
     } catch (exception) {
       return apiErrorMessage(exception);
+    } finally {
+      if (generation === collectionGeneration.current) {
+        pendingSaves.current.delete(book.id);
+        setSavingIds([...pendingSaves.current]);
+      }
     }
   }, []);
 
-  const removeFromCollection = useCallback(async (book: Book) => {
-    try {
-      await request(`/collection/${book.id}`, { method: "DELETE" });
-      const next = libraryRef.current.filter((item) => item.id !== book.id);
-      libraryRef.current = next;
-      setLibrary(next);
-      return null;
-    } catch (exception) {
-      return apiErrorMessage(exception);
-    }
-  }, []);
+  const addToCollection = useCallback((book: Book) => updateCollection(book, true), [updateCollection]);
+  const removeFromCollection = useCallback((book: Book) => updateCollection(book, false), [updateCollection]);
 
   const toggleCollection = useCallback(
     async (book: Book) => {
-      const saved = library.some((item) => item.id === book.id);
+      const saved = libraryRef.current.some((item) => item.id === book.id);
       return saved ? removeFromCollection(book) : addToCollection(book);
     },
-    [library, addToCollection, removeFromCollection],
+    [addToCollection, removeFromCollection],
   );
 
   const reloadActive = useCallback(async () => {
@@ -189,6 +208,10 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
   }, [loadBooks]);
 
   const reset = useCallback(() => {
+    collectionGeneration.current++;
+    pendingSaves.current.clear();
+    collectionEdits.current.clear();
+    setSavingIds([]);
     setBooks([]);
     setUpcoming([]);
     setLibrary([]);
@@ -241,6 +264,7 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
       books,
       upcoming,
       library,
+      savingIds,
       loading,
       collectionLoading,
       collectionLoaded,
@@ -263,6 +287,7 @@ export function BooksProvider({ children }: { children: React.ReactNode }) {
       books,
       upcoming,
       library,
+      savingIds,
       loading,
       collectionLoading,
       collectionLoaded,

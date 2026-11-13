@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/providers/auth';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { ThemePressable, ThemeText, ThemeView } from '@/components/ui/theme-motion';
@@ -128,11 +129,21 @@ export default function ProfileTab() {
           </View>
 
           <View className="mt-6 flex-row items-center">
-            <View className="h-[76px] w-[76px] items-center justify-center rounded-full bg-coral">
-              <Text className="text-[30px] font-black text-white">
-                {Array.from(user?.name?.trim() ?? '')[0]?.toUpperCase() || 'U'}
-              </Text>
-            </View>
+            <LinearGradient
+              colors={['#FB8500', '#FFB703', '#EE9B00', '#FCA311']}
+              locations={[0, 0.35, 0.7, 1]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ width: 76, height: 76, borderRadius: 38, padding: 3, flexShrink: 0 }}
+            >
+              <ThemeView lightBackground="#FFFFFF" darkBackground="#111111" className="flex-1 rounded-full p-[3px]">
+                <ThemeView lightBackground="#FFF5DF" darkBackground="#302414" className="flex-1 items-center justify-center rounded-full">
+                  <ThemeText lightColor="#995B00" darkColor="#FFB703" className="text-[30px] font-black">
+                    {Array.from(user?.name?.trim() ?? '')[0]?.toUpperCase() || 'U'}
+                  </ThemeText>
+                </ThemeView>
+              </ThemeView>
+            </LinearGradient>
             <View className="ml-4 flex-1">
               <ThemeText lightColor="#241F1C" darkColor="#F8F5F0" className="text-xl font-extrabold">{user?.name ?? ''}</ThemeText>
               <ThemeText lightColor="#6B625C" darkColor="#A8A29E" className="mt-1 text-[14px]">{user?.email ?? user?.phoneNumber ?? ''}</ThemeText>

@@ -1,12 +1,7 @@
 import { useAppLanguage } from '@/providers/app-language';
-import { useAppMotion } from '@/providers/motion';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect } from 'react';
 import {
-  ActivityIndicator,
-  Animated,
-  PanResponder,
   Pressable,
-  ScrollView,
   Text,
   View,
   useWindowDimensions,
@@ -17,9 +12,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useBooks } from '@/providers/books';
 import { useNotifications } from '@/providers/notifications';
-import { USE_NATIVE_DRIVER } from '@/lib/app-environment';
 import { notificationAge } from '@/lib/format';
 import type { AppNotification } from '@/lib/types';
+import { BellPullSurface } from '@/components/ui/bell-pull-surface';
+import { PullScrollView } from '@/components/ui/pull-scrollables';
+import { useElasticRefresh } from '@/hooks/use-elastic-refresh';
+import Animated from 'react-native-reanimated';
+import { GestureDetector } from 'react-native-gesture-handler';
+import { useSheetDismiss } from '@/hooks/use-sheet-dismiss';
 
 function iconFor(type: string): keyof typeof Ionicons.glyphMap {
   if (type === 'new_episode') return 'headset';
@@ -72,36 +72,13 @@ function NotificationTile({
 
 export default function NotificationsScreen() {
   const { t } = useAppLanguage();
-  const { animationsEnabled } = useAppMotion();
   const { items, loading, error, load } = useNotifications();
+  const elasticRefresh = useElasticRefresh(loading, () => load(true));
   const { resolveBook } = useBooks();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const sheetHeight = Math.min(520, Math.max(320, height - insets.top - 40));
-  const [sheetDrag] = useState(() => new Animated.Value(0));
-  const handlePan = useMemo(() =>
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_event, gesture) =>
-        gesture.dy > 6 && Math.abs(gesture.dy) > Math.abs(gesture.dx),
-      onPanResponderMove: (_event, gesture) => {
-        sheetDrag.setValue(Math.max(0, gesture.dy));
-      },
-      onPanResponderRelease: (_event, gesture) => {
-        if (gesture.dy > 70 || gesture.vy > 0.5) {
-          if (!animationsEnabled) { router.back(); return; }
-          Animated.timing(sheetDrag, {
-            toValue: sheetHeight,
-            duration: 170,
-            useNativeDriver: USE_NATIVE_DRIVER,
-          }).start(() => router.back());
-        } else {
-          if (!animationsEnabled) { sheetDrag.setValue(0); return; }
-          Animated.spring(sheetDrag, { toValue: 0, useNativeDriver: USE_NATIVE_DRIVER }).start();
-        }
-      },
-    }),
-    [animationsEnabled, sheetDrag, sheetHeight],
-  );
+  const sheet = useSheetDismiss(true, () => router.back(), sheetHeight);
 
   useEffect(() => {
     void load(true);
@@ -119,37 +96,52 @@ export default function NotificationsScreen() {
         accessibilityRole="button"
         accessibilityLabel={t("Close notifications")}
         className="flex-1"
-        onPress={() => router.back()}
+        onPress={sheet.dismiss}
       />
       <Animated.View
-        style={{
+        accessibilityViewIsModal onAccessibilityEscape={sheet.dismiss}
+        style={[{
           height: sheetHeight,
           paddingBottom: Math.max(insets.bottom, 20),
-          transform: [{ translateY: sheetDrag }],
-        }}
+        }, sheet.style]}
         className="rounded-t-3xl bg-white px-5 pt-3 dark:bg-[#1B1B1B]"
       >
+        <GestureDetector gesture={sheet.gesture}>
         <View
-          {...handlePan.panHandlers}
+          collapsable={false}
           className="-mx-5 -mt-3 px-5 pt-3 pb-1"
         >
           <View className="h-1 w-10 self-center rounded-full bg-[#A8A29E]" />
-          <Text className="mt-4 text-[22px] font-black text-[#241F1C] dark:text-[#F8F5F0]">{t("Notifications")}
-          </Text>
+        <View className="mt-3 flex-row items-center justify-between">
+          <Text className="flex-1 text-[22px] font-black text-[#241F1C] dark:text-[#F8F5F0]">{t('Notifications')}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={t('Refresh notifications')} accessibilityState={{ disabled: loading, busy: loading }} disabled={loading}
+            onPress={() => void load(true)} className="h-11 w-11 items-center justify-center rounded-full bg-coral/10 active:opacity-70">
+            <Ionicons name="refresh-outline" size={21} color="#F25F45" />
+          </Pressable>
         </View>
-        <ScrollView
+        </View>
+        </GestureDetector>
+        <BellPullSurface motion={elasticRefresh} refreshing={loading}>
+        <PullScrollView
+          {...elasticRefresh.scrollProps}
           className="mt-3 flex-1"
-          contentContainerStyle={{ paddingBottom: 12 }}
+          contentContainerStyle={{ paddingBottom: 68, flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
         >
-          {loading && items.length === 0 ? (
-            <View className="items-center py-12">
-              <ActivityIndicator color="#F25F45" />
+          {error ? (
+            <View accessibilityLiveRegion="polite" className="mb-3 rounded-xl bg-coral/10 p-3">
+              <Text className="text-sm text-[#6B625C] dark:text-[#D0C8C2]">{error}</Text>
+              <Pressable accessibilityRole="button" disabled={loading} onPress={() => void load(true)} className="min-h-11 justify-center">
+                <Text className="font-bold text-coral">{t('Try again')}</Text>
+              </Pressable>
             </View>
-          ) : items.length === 0 ? (
+          ) : null}
+          {loading && items.length === 0 ? (
+            <View className="flex-1" />
+          ) : items.length === 0 && !error ? (
             <View className="items-center py-12">
               <Text className="text-center text-[15px] text-[#A8A29E]">
-                {error ?? t("No notifications yet.")}
+                {t("No notifications yet.")}
               </Text>
             </View>
           ) : (
@@ -165,7 +157,8 @@ export default function NotificationsScreen() {
               />
             ))
           )}
-        </ScrollView>
+        </PullScrollView>
+        </BellPullSurface>
       </Animated.View>
     </View>
   );

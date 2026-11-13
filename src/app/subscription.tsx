@@ -1,5 +1,5 @@
 import { useAppLanguage } from '@/providers/app-language';
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
@@ -7,9 +7,16 @@ import { useAuth } from "@/providers/auth";
 import { useSubscription } from "@/providers/subscription";
 import { ActionButton, TextAction } from "@/components/ui/action-button";
 import { dateOnly } from "@/lib/format";
+import { PRIVACY_POLICY_URL, TERMS_URL } from '@/lib/store-links';
+import { useToast } from '@/providers/toast';
 
 export default function SubscriptionScreen() {
   const { t } = useAppLanguage();
+  const { showToast } = useToast();
+  const openPolicy = async (url: string) => {
+    try { await Linking.openURL(url); }
+    catch { showToast(t('Could not open this policy page.'), false); }
+  };
   const { prompt } = useLocalSearchParams<{ prompt?: string }>();
   const showClose = prompt === "1";
   const { user } = useAuth();
@@ -154,6 +161,14 @@ export default function SubscriptionScreen() {
             onPress={() => void restore()}
             color="coral"
           />
+        </View>
+        <View className="mt-4 flex-row flex-wrap justify-center gap-x-5 gap-y-2">
+          <Pressable accessibilityRole="link" onPress={() => void openPolicy(PRIVACY_POLICY_URL)} className="min-h-11 justify-center">
+            <Text className="text-center text-sm text-coral underline">{t('Privacy Policy')}</Text>
+          </Pressable>
+          <Pressable accessibilityRole="link" onPress={() => void openPolicy(TERMS_URL)} className="min-h-11 justify-center">
+            <Text className="text-center text-sm text-coral underline">{t('Terms and Conditions')}</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>

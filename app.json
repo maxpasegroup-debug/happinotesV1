@@ -9,16 +9,26 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/images/app-icon-1024.png",
-      "bundleIdentifier": "com.happinotes.happinotesFlutter",
+      "bundleIdentifier": "com.happinotes.app",
       "buildNumber": "1",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false,
+          "NSAllowsLocalNetworking": true
+        }
       }
     },
     "android": {
-      "package": "com.happinotes.happinotes_flutter",
+      "package": "com.happinotes.app",
       "versionCode": 4,
       "googleServicesFile": "./google-services.json",
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/app-icon-android-foreground.png",
         "backgroundImage": "./assets/images/app-icon-android-background.png",
@@ -41,12 +51,20 @@
           "imageWidth": 180
         }
       ],
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ],
       "expo-iap",
       [
         "expo-audio",
         {
-          "enableBackgroundPlayback": true
+          "enableBackgroundPlayback": true,
+          "enableBackgroundRecording": false,
+          "microphonePermission": false,
+          "recordAudioAndroid": false
         }
       ],
       [
@@ -55,7 +73,7 @@
           "icon": "./assets/images/notification-icon.png",
           "color": "#F25F45",
           "defaultChannel": "default",
-          "enableBackgroundRemoteNotifications": true
+          "enableBackgroundRemoteNotifications": false
         }
       ]
     ],

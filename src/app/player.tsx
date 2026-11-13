@@ -49,7 +49,7 @@ export default function PlayerScreen() {
     playPrevious,
     seek,
   } = usePlayer();
-  const { library, addToCollection, removeFromCollection } = useBooks();
+  const { library, savingIds, addToCollection, removeFromCollection } = useBooks();
   const { showToast } = useToast();
   const { colorScheme } = useColorScheme();
   const ink = colorScheme === 'dark' ? '#F8F5F0' : '#241F1C';
@@ -230,7 +230,7 @@ export default function PlayerScreen() {
           <Action
             icon={saved ? 'bookmark' : 'bookmark-outline'}
             label={saved ? t("Saved") : t("Save")}
-            onPress={() => void toggleSaved()}
+            onPress={savingIds.includes(currentBook.id) ? undefined : () => void toggleSaved()}
           />
           <Action
             icon="share-outline"

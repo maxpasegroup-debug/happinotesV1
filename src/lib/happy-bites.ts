@@ -13,9 +13,14 @@ function displayOrder(items: HappyBite[]) {
 }
 
 
-export async function fetchHappyBites(page = 1, category?: string) {
+let refreshSequence = 0;
+
+export async function fetchHappyBites(page = 1, category?: string, force = false) {
   const params = new URLSearchParams({ page: String(page), limit: String(HAPPY_BITES_PAGE_SIZE) });
   if (category && category !== 'all') params.set('category', category);
+  // Native HTTP stacks and proxies may reuse a URL despite fetch's cache option.
+  // Each explicit refresh must fetch a fresh first page, including after edits/unpublishing.
+  if (force) params.set('_refresh', `${Date.now()}-${++refreshSequence}`);
   const result = await request<{ items?: any[]; happyBites?: any[]; categories?: string[]; pagination?: { hasMore?: boolean; totalPages?: number } }>(
     `/happy-bites?${params.toString()}`, { cache: 'no-store' },
   );

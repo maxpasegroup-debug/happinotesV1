@@ -17,13 +17,27 @@
       }
     },
     "production": {
+      "distribution": "store",
+      "environment": "production",
       "autoIncrement": true,
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "buildConfiguration": "Release",
+        "simulator": false
+      },
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://happinotes-production-6b44.up.railway.app"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "android": {
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    }
   }
 }

@@ -6,8 +6,7 @@ import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import { ScreenHeader } from '@/components/ui/action-button';
 import { useToast } from '@/providers/toast';
-
-const POLICY_BASE = 'https://happinotes.online';
+import { POLICY_BASE_URL } from '@/lib/store-links';
 
 const LINKS: {
   title: string;
@@ -47,7 +46,7 @@ export default function LegalScreen() {
 
   const open = async (path: string) => {
     try {
-      await Linking.openURL(`${POLICY_BASE}${path}`);
+      await Linking.openURL(`${POLICY_BASE_URL}${path}`);
     } catch {
       showToast('Could not open this policy page.', false);
     }

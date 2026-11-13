@@ -38,7 +38,7 @@ export function NotificationsProvider({
     setLoading(true);
     setError(null);
     try {
-      const result = await request<{ notifications: any[] }>("/notifications");
+      const result = await request<{ notifications: any[] }>("/notifications", { cache: 'no-store' });
       setItems(
         Array.isArray(result.notifications)
           ? result.notifications.map(parseNotification)

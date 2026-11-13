@@ -36,6 +36,7 @@ Docs: https://docs.expo.dev/eas/index.md
 
 ## Rules
 
+- Whenever adding, deleting, renaming, or moving a project file or folder, update `/home/swaraj/airaskill/happinotes-v1-tree.md` in the same task. Keep its tree, file/directory counts, and snapshot date accurate. Preserve its exclusions for dependencies, Git internals, and generated build/cache folders; list file names only, never file contents or credentials.
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md

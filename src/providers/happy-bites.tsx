@@ -12,12 +12,14 @@ type HappyBitesValue = {
   error: string | null;
   loadFirst: (category?: string, force?: boolean) => Promise<void>;
   loadMore: () => Promise<void>;
+  reloadActive: () => Promise<void>;
 };
 
 const Context = createContext<HappyBitesValue | null>(null);
 
 export function HappyBitesProvider({ children }: { children: React.ReactNode }) {
   const generation = useRef(0);
+  const activeCategory = useRef('all');
   const [items, setItems] = useState<HappyBite[]>([]);
   const [serverCategories, setServerCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -29,12 +31,13 @@ export function HappyBitesProvider({ children }: { children: React.ReactNode }) 
 
   const loadFirst = useCallback(async (nextCategory = 'all', force = false) => {
     const requestId = ++generation.current;
+    activeCategory.current = nextCategory;
     setLoadingMore(false);
     setCategory(nextCategory);
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchHappyBites(1, nextCategory);
+      const result = await fetchHappyBites(1, nextCategory, force);
       if (requestId !== generation.current) return;
       setItems(result.items);
       setServerCategories(result.categories);
@@ -49,6 +52,8 @@ export function HappyBitesProvider({ children }: { children: React.ReactNode }) 
       if (requestId === generation.current) setLoading(false);
     }
   }, []);
+
+  const reloadActive = useCallback(() => loadFirst(activeCategory.current, true), [loadFirst]);
 
   const loadMore = useCallback(async () => {
     if (loading || loadingMore || !hasMore) return;
@@ -72,7 +77,7 @@ export function HappyBitesProvider({ children }: { children: React.ReactNode }) 
   }, [category, hasMore, loading, loadingMore, page]);
 
   const categories = useMemo(() => ['all', ...new Set([...serverCategories, ...items.map((item) => item.category)].filter(Boolean))], [items, serverCategories]);
-  const value = useMemo(() => ({ items, categories, loading, loadingMore, hasMore, error, loadFirst, loadMore }), [items, categories, loading, loadingMore, hasMore, error, loadFirst, loadMore]);
+  const value = useMemo(() => ({ items, categories, loading, loadingMore, hasMore, error, loadFirst, loadMore, reloadActive }), [items, categories, loading, loadingMore, hasMore, error, loadFirst, loadMore, reloadActive]);
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 

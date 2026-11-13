@@ -15,11 +15,17 @@ import type { Book } from '@/lib/types';
 import { BookPullSurface } from '@/components/ui/book-pull-surface';
 import { useElasticRefresh } from '@/hooks/use-elastic-refresh';
 import { PullFlatList } from '@/components/ui/pull-scrollables';
+import { usePlayer } from '@/providers/player';
+import { useToast } from '@/providers/toast';
+import { HappyBiteAccessError } from '@/lib/happy-bite-access';
+import { apiErrorMessage } from '@/lib/api';
 
 export default function LibraryTab() {
   const { t } = useAppLanguage();
-  const { library, collectionLoading, collectionLoaded, loadCollection } =
+  const { library, savingIds, removeFromCollection, collectionLoading, collectionLoaded, loadCollection } =
     useBooks();
+  const { playBook } = usePlayer();
+  const { showToast } = useToast();
   const { width } = useWindowDimensions();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -40,6 +46,22 @@ export default function LibraryTab() {
 
   const cardWidth = (width - 40 - 18) / 2;
   const elasticRefresh = useElasticRefresh(refreshing, refresh);
+  const openItem = async (book: Book) => {
+    if (!book.happyBiteId) {
+      router.push({ pathname: '/book/[id]', params: { id: book.id } });
+      return;
+    }
+    try {
+      await playBook(book);
+      router.push('/player');
+    } catch (error) {
+      if (!(error instanceof HappyBiteAccessError)) showToast(apiErrorMessage(error), false);
+    }
+  };
+  const removeBite = async (book: Book) => {
+    const error = await removeFromCollection(book);
+    showToast(error ?? 'Removed from library', error == null);
+  };
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-white dark:bg-[#111111]">
@@ -68,12 +90,10 @@ export default function LibraryTab() {
                 <BookCard
                   book={item}
                   width={cardWidth}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/book/[id]',
-                      params: { id: item.id },
-                    })
-                  }
+                  saved
+                  saving={savingIds.includes(item.id)}
+                  onToggleSaved={item.happyBiteId ? () => void removeBite(item) : undefined}
+                  onPress={() => void openItem(item)}
                 />
               )}
             />

@@ -8,6 +8,8 @@ import {
   useState,
 } from "react";
 import { Linking, Platform } from "react-native";
+import Constants from "expo-constants";
+import { androidSubscriptionSettingsUrl } from "@/lib/store-links";
 import { useIAP, IAP_SUPPORTED } from "@/lib/iap";
 import { IS_EXPO_GO } from "@/lib/app-environment";
 import { apiErrorMessage, request } from "@/lib/api";
@@ -345,9 +347,7 @@ export function SubscriptionProvider({
   const openStoreSubscriptions = useCallback(async () => {
     const url =
       Platform.OS === "android"
-        ? `https://play.google.com/store/account/subscriptions?package=com.happinotes.happinotes_flutter${
-            activeProductId ? `&sku=${encodeURIComponent(activeProductId)}` : ""
-          }`
+        ? androidSubscriptionSettingsUrl(Constants.expoConfig?.android?.package, activeProductId)
         : "https://apps.apple.com/account/subscriptions";
     try {
       await Linking.openURL(url);

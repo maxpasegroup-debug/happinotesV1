@@ -149,6 +149,7 @@ export function useElasticRefresh(refreshing: boolean, onRefresh: () => Promise<
   }));
 
   return {
+    pullDistance: offset,
     animatedStyle,
     shadeStyle,
     handStyle,

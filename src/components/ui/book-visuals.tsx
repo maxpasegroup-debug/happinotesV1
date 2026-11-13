@@ -144,7 +144,7 @@ export function BookCard({
         style={{ opacity: textOpacity }}
         className="mt-[3px] text-[11px] leading-[14px] text-[#6B625C] dark:text-[#A8A29E]"
       >
-        {book.language} •{" "}
+        {book.happyBiteId ? 'Happy Bites' : book.language} •{" "}
         {book.accessType === "premium" ? t("Premium subscription") : t("Free")}
       </Text>
     </Pressable>
