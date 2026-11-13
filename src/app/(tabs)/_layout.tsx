@@ -10,15 +10,13 @@ import { useBooks } from '@/providers/books';
 function tabSceneStyle({ current }: { current: { progress: Animated.Value } }) {
   return {
     sceneStyle: {
-      opacity: current.progress.interpolate({
-        inputRange: [-1, 0, 1],
-        outputRange: [0, 1, 0],
-        extrapolate: 'clamp',
-      }),
+      // Keep the outgoing screen beneath an opaque incoming screen. Fading both
+      // reveals the navigator background midway through a switch.
+      opacity: 1,
       transform: [{
-        translateY: current.progress.interpolate({
+        translateX: current.progress.interpolate({
           inputRange: [-1, 0, 1],
-          outputRange: [10, 0, 10],
+          outputRange: [-24, 0, 24],
           extrapolate: 'clamp',
         }),
       }],
@@ -41,12 +39,11 @@ export default function TabsLayout() {
       <Tabs
         screenOptions={{
           headerShown: false,
-          // Keep the native screen container and opacity graph stable when the
-          // preference changes. Switching fade -> none can leave scenes hidden.
-          // A zero-duration fade below makes disabled transitions instantaneous.
-          animation: 'fade',
+          // Keep the same animation graph when motion is disabled; only the
+          // duration changes, so toggling the setting cannot leave a hidden tab.
+          animation: 'shift',
           sceneStyleInterpolator: tabSceneStyle,
-          transitionSpec: { animation: 'timing', config: { duration: animationsEnabled ? 200 : 0, easing: Easing.out(Easing.cubic) } },
+          transitionSpec: { animation: 'timing', config: { duration: animationsEnabled ? 220 : 0, easing: Easing.out(Easing.cubic) } },
           lazy: false,
           sceneStyle: { backgroundColor: dark ? '#111111' : '#FFFFFF' },
         }}

@@ -7,7 +7,8 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardForm } from '@/hooks/use-keyboard-form';
 import { router } from 'expo-router';
 import { ScreenHeader, ActionButton } from '@/components/ui/action-button';
 import { Field } from '@/components/ui/field';
@@ -16,6 +17,8 @@ import { apiErrorMessage, request } from '@/lib/api';
 
 export default function ForgotPasswordScreen() {
   const { t } = useAppLanguage();
+  const insets = useSafeAreaInsets();
+  const keyboardForm = useKeyboardForm();
   const { showToast } = useToast();
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -65,14 +68,16 @@ export default function ForgotPasswordScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-[#111111]">
-      <ScreenHeader title={t("Forgot password")} onBack={() => router.back()} />
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={insets.top}
       >
+        <ScreenHeader title={t("Forgot password")} onBack={() => router.back()} />
         <ScrollView
+          {...keyboardForm}
+          style={{ flex: 1 }}
           contentContainerClassName="px-6 pb-8"
-          keyboardShouldPersistTaps="handled"
         >
           <Text className="mt-4 text-[26px] font-extrabold text-[#241F1C] dark:text-[#F8F5F0]">{t("Reset your password")}
           </Text>
@@ -82,6 +87,7 @@ export default function ForgotPasswordScreen() {
 
           <Field
             label={t("Email address")}
+            placeholder="Email address"
             value={email}
             onChangeText={setEmail}
             editable={!sent}
@@ -100,6 +106,7 @@ export default function ForgotPasswordScreen() {
               />
               <Field
                 label={t("New password")}
+                placeholder="New password"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry

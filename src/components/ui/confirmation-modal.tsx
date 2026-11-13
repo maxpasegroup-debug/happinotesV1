@@ -3,7 +3,8 @@ import { useAppMotion } from '@/providers/motion';
 import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardForm } from '@/hooks/use-keyboard-form';
 import { ActionButton } from './action-button';
 
 export function ConfirmationModal({
@@ -26,13 +27,15 @@ export function ConfirmationModal({
   children?: ReactNode;
 }) {
   const { t } = useAppLanguage();
+  const insets = useSafeAreaInsets();
+  const keyboardForm = useKeyboardForm();
   const { animationsEnabled } = useAppMotion();
   const dismiss = () => { if (!loading) onCancel?.(); };
 
   return (
     <Modal visible={visible} transparent animationType={animationsEnabled ? 'fade' : 'none'} onRequestClose={dismiss}>
       <SafeAreaView style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.55)' }}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={insets.top}>
           <View style={{ flex: 1, justifyContent: 'center', padding: 24 }}>
             <Pressable
               accessible={false}
@@ -40,7 +43,7 @@ export function ConfirmationModal({
               style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 }}
             />
             <View accessibilityViewIsModal onAccessibilityEscape={dismiss} className="w-full max-w-[420px] self-center overflow-hidden rounded-[28px] bg-white dark:bg-[#1B1B1B]" style={{ maxHeight: '100%' }}>
-              <ScrollView bounces={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 24 }}>
+              <ScrollView {...keyboardForm} bounces={false} contentContainerStyle={{ padding: 24 }}>
                 <View className={`mb-5 h-14 w-14 items-center justify-center rounded-2xl ${destructive ? 'bg-[#FDECE9] dark:bg-[#382321]' : 'bg-[#FFF0E8] dark:bg-[#352720]'}`}>
                   <Ionicons name={icon} size={27} color={destructive ? '#D65348' : '#F25F45'} />
                 </View>

@@ -70,7 +70,7 @@ export default function AdminScreen() {
     await stop();
     await logout();
     resetBooks();
-    router.replace('/');
+    router.replace('/auth');
   };
 
   const confirmDelete = (book: Record<string, any>) => {

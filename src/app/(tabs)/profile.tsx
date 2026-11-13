@@ -110,7 +110,7 @@ export default function ProfileTab() {
       await logout();
       resetBooks();
       setLogoutVisible(false);
-      router.replace('/');
+      router.replace('/auth');
     } catch (exception) {
       setLogoutError(apiErrorMessage(exception));
     } finally {

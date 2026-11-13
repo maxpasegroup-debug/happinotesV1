@@ -195,13 +195,13 @@ export default function HomeTab() {
         <View className="mt-[18px] flex-row items-center gap-2">
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={t("Search books and stories")}
+          accessibilityLabel={t("Discover")}
           onPress={() => router.navigate('/search')}
           className="min-h-[52px] flex-1 flex-row items-center rounded-2xl bg-[#F6F6F6] px-4 py-3 active:opacity-80 dark:bg-[#242424]"
         >
-          <Ionicons name="search" size={20} color="#A8A29E" />
-          <Text numberOfLines={2} className="ml-3 flex-1 text-[15px] text-[#A8A29E]">{t("Search books and stories")}
-          </Text>
+          <Ionicons name="compass-outline" size={23} color="#F25F45" />
+          <Text className="ml-3 flex-1 text-[16px] font-bold text-[#241F1C] dark:text-[#F8F5F0]">{t("Discover")}</Text>
+          <Ionicons name="arrow-forward" size={18} color="#A8A29E" />
         </Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel={t("Choose listening language")} disabled={savingLanguage}
           onPress={() => setLanguageOpen(true)}
@@ -217,7 +217,7 @@ export default function HomeTab() {
               <SectionTitle>{t("Audiobooks")}</SectionTitle>
               <Text className="mt-1 text-[13px] text-[#6B625C] dark:text-[#A8A29E]">{t("The newest additions to your listening list.")}</Text>
             </View>
-            <Pressable accessibilityRole="button" accessibilityLabel={t("See all audiobooks")} onPress={() => router.navigate('/search')} className="py-3 pl-3">
+            <Pressable accessibilityRole="button" accessibilityLabel={t("See all audiobooks")} onPress={() => router.navigate({ pathname: '/search', params: { filter: 'books' } })} className="py-3 pl-3">
               <Text className="text-sm font-extrabold text-coral">{t("See all")}</Text>
             </Pressable>
           </View>

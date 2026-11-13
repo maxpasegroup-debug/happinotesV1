@@ -8,7 +8,8 @@ import {
   View,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardForm } from '@/hooks/use-keyboard-form';
 import { router } from 'expo-router';
 import { ActionButton, TextAction } from '@/components/ui/action-button';
 import { Field, OtpBoxes } from '@/components/ui/field';
@@ -20,6 +21,8 @@ type AuthStep = 'email' | 'otp' | 'password';
 
 export default function AuthScreen() {
   const { t } = useAppLanguage();
+  const insets = useSafeAreaInsets();
+  const keyboardForm = useKeyboardForm();
   const {
     user,
     requestEmailOtp,
@@ -177,11 +180,13 @@ export default function AuthScreen() {
     <SafeAreaView className="flex-1 bg-white dark:bg-[#111111]">
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={insets.top}
       >
         <ScrollView
+          {...keyboardForm}
+          style={{ flex: 1 }}
           contentContainerClassName="flex-grow justify-center px-6 py-8"
-          keyboardShouldPersistTaps="handled"
         >
           <View className="w-full max-w-[480px] self-center">
             <Image
@@ -197,6 +202,7 @@ export default function AuthScreen() {
             {step === 'email' ? (
               <Field
                 label={t("Email address")}
+                placeholder="Email address"
                 value={email}
                 onChangeText={(value) => {
                   setEmail(value.trim());
@@ -256,6 +262,7 @@ export default function AuthScreen() {
                 ) : null}
                 <Field
                   label={t("Password")}
+                  placeholder="Enter your password"
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry
@@ -266,6 +273,7 @@ export default function AuthScreen() {
                 {isSignup ? (
                   <Field
                     label={t("Confirm password")}
+                    placeholder="Confirm password"
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     secureTextEntry

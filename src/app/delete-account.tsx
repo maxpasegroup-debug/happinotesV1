@@ -111,7 +111,7 @@ export default function DeleteAccountScreen() {
   const expireSession = useCallback(async () => {
     await logout();
     showToast('Your session expired. Please sign in again.', false);
-    router.replace('/');
+    router.replace('/auth');
   }, [logout, showToast]);
 
   const handleCompleted = useCallback(
@@ -131,7 +131,7 @@ export default function DeleteAccountScreen() {
     try {
       await logout();
       showToast('Your HappiNotes account deletion is complete.');
-      router.replace('/');
+      router.replace('/auth');
     } catch (exception) {
       setDialogError(apiErrorMessage(exception));
     } finally {
@@ -435,6 +435,7 @@ export default function DeleteAccountScreen() {
         {dialog === 'reauth' ? (
           <Field
             label={t("Password or PIN")}
+            placeholder="Password or PIN"
             value={credential}
             onChangeText={setCredential}
             secureTextEntry
