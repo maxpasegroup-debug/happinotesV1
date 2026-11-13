@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/images/app-icon-1024.png",
-      "bundleIdentifier": "com.happinotes.app",
+      "bundleIdentifier": "com.happinotes.happinotes_flutter",
       "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -20,8 +20,8 @@
       }
     },
     "android": {
-      "package": "com.happinotes.app",
-      "versionCode": 5,
+      "package": "com.happinotes.happinotes_flutter",
+      "versionCode": 9,
       "googleServicesFile": "./google-services.json",
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
